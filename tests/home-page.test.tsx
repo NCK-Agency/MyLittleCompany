@@ -8,6 +8,7 @@ describe("Home", () => {
 
     expect(screen.getByRole("heading", { name: "Explain it once. Your company remembers." })).toBeInTheDocument();
     expect(screen.getByText(/turns everyday owner conversations into human-approved company knowledge/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /See the salon remember/i })).toHaveAttribute("href", "/chat?assistant=MARKETING");
+    expect(screen.getAllByRole("link", { name: /Start the live salon demo/i })).toHaveLength(2);
+    expect(screen.getByRole("link", { name: /Open the live salon demo/i })).toHaveAttribute("href", "/chat?assistant=MARKETING");
   });
 });

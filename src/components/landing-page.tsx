@@ -38,7 +38,10 @@ export function LandingPage() {
           <h1 id="landing-title">Explain it once.<br />Your company remembers.</h1>
           <p className="landing-hero-summary">My Little Company turns everyday owner conversations into human-approved company knowledge, so every employee and assistant can act from the same truth.</p>
           <div className="landing-hero-actions">
-            <Link className="primary-button" href="/chat?assistant=MARKETING">See the salon remember <span aria-hidden="true" className="ml-2">→</span></Link>
+            <Link className="primary-button landing-primary-cta" href="/chat?assistant=MARKETING">
+              Start the live salon demo
+              <span aria-hidden="true" className="landing-cta-arrow">→</span>
+            </Link>
             <a className="landing-text-link" href="#how-it-works">How it works ↓</a>
           </div>
         </div>
@@ -148,7 +151,10 @@ export function LandingPage() {
           </ol>
         </div>
         <div className="landing-proof-actions">
-          <Link className="primary-button" href="/chat?assistant=MARKETING">Run the live salon story <span aria-hidden="true" className="ml-2">→</span></Link>
+          <Link className="primary-button landing-primary-cta" href="/chat?assistant=MARKETING">
+            Open the live salon demo
+            <span aria-hidden="true" className="landing-cta-arrow">→</span>
+          </Link>
           <Link className="landing-text-link text-[var(--cobalt)]" href="/workspace">Open demo controls</Link>
         </div>
       </section>
@@ -157,7 +163,10 @@ export function LandingPage() {
         <BrandMark className="landing-closing-mark" />
         <p className="landing-eyebrow">My Little Company</p>
         <h2 id="closing-title">One approved truth.<br />Every future answer gets better.</h2>
-        <Link className="primary-button" href="/chat?assistant=MARKETING">Start with one conversation <span aria-hidden="true" className="ml-2">→</span></Link>
+        <Link className="primary-button landing-primary-cta" href="/chat?assistant=MARKETING">
+          Start the live salon demo
+          <span aria-hidden="true" className="landing-cta-arrow">→</span>
+        </Link>
       </section>
     </main>
   );

@@ -1016,3 +1016,43 @@ Visual semantics record: PASS (cobalt anchors, butter suggests, coral confirms)
 README/Project Memory links: PASS
 git diff --check: PASS
 ```
+
+## Active checkpoint: landing-page CTA hierarchy
+
+**Outcome:** Make the live salon demo unmistakably clickable at every landing-page
+handoff while preserving the statement-led story and one-primary-action rule.
+
+**Affected files:** `src/components/landing-page.tsx`, landing-only rules in
+`src/app/globals.css`, focused home-page tests, and this plan.
+
+**Implementation steps:**
+
+- [x] Replace metaphorical CTA copy with explicit live-demo language.
+- [x] Give primary landing actions stronger size, contrast, depth, focus, hover,
+  active, and mobile states without changing global app buttons.
+- [x] Preserve quiet secondary links for process details and demo controls.
+- [x] Verify the landing page at desktop and mobile sizes, then run lint,
+  typecheck, tests, build, and the relevant browser flow.
+
+**Verification results (2026-07-11):**
+
+```text
+CTA target audit: PASS (three primary actions at 60px high and 16px text)
+Responsive QA:    PASS (1280px desktop, 768px tablet, 375px mobile)
+CTA browser test: PASS (visible link, correct Marketing route, 60px target)
+pnpm lint:        PASS
+pnpm typecheck:   PASS
+pnpm test:        PASS (24 files, 93 tests)
+pnpm build:       PASS (Next.js 16.2.10 webpack production build)
+pnpm test:e2e:    FLAKY outside CTA scope (CTA and salon paths pass; login and
+                   onboarding navigation intermittently abort or detach in the
+                   full suite; the failed onboarding scenario passes alone)
+git diff --check: PASS
+```
+
+The design-review methodology led to one primary action per section, explicit
+live-demo copy, visible default depth rather than hover-only affordance, and
+full-width mobile CTAs. No route or product behavior changed.
+
+**Rollback:** Remove the landing CTA modifier styles and restore the prior link
+labels. No routes, product behavior, or application data are affected.

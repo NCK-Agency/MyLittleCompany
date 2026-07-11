@@ -583,6 +583,42 @@ textarea:focus-visible {
   margin-top: 2rem;
 }
 
+.landing-primary-cta {
+  min-height: 3.75rem;
+  gap: 0.75rem;
+  border: 2px solid var(--coral-deep);
+  padding: 0.9rem 1.5rem;
+  box-shadow: 0 5px 0 var(--coral-deep);
+  font-size: 1rem;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+}
+
+.landing-primary-cta:hover {
+  box-shadow: 0 8px 0 var(--coral-deep);
+  transform: translateY(-3px);
+}
+
+.landing-primary-cta:active {
+  box-shadow: 0 2px 0 var(--coral-deep);
+  transform: translateY(3px);
+}
+
+.landing-primary-cta:focus-visible {
+  outline: 3px solid var(--butter);
+  outline-offset: 4px;
+}
+
+.landing-cta-arrow {
+  font-size: 1.25em;
+  line-height: 1;
+  transition: transform 150ms ease-out;
+}
+
+.landing-primary-cta:hover .landing-cta-arrow {
+  transform: translateX(0.25rem);
+}
+
 .landing-text-link {
   display: inline-flex;
   min-height: 44px;
@@ -1225,6 +1261,22 @@ textarea:focus-visible {
 
   .landing-hero-summary {
     font-size: 1.05rem;
+  }
+
+  .landing-hero-actions,
+  .landing-proof-actions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .landing-primary-cta {
+    width: 100%;
+    min-height: 3.75rem;
+  }
+
+  .landing-text-link {
+    justify-content: center;
   }
 
   .landing-memory-stage {
