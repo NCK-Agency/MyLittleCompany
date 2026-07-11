@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mylittlecompany.local/schemas/memory-candidate.schema.json",
+  "title": "Memory Candidate Extraction Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "candidates"
+  ],
+  "properties": {
+    "candidates": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "title",
+          "statement",
+          "rationale",
+          "rationaleMissing",
+          "appliesToRoles",
+          "tags",
+          "sensitivity",
+          "confidence",
+          "relation",
+          "relatedMemoryIds",
+          "sourceMessageIds",
+          "evidenceExcerpt"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "COMPANY_FACT",
+              "CUSTOMER_INSIGHT",
+              "BRAND_RULE",
+              "POLICY",
+              "DECISION",
+              "SOP",
+              "LESSON"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 2000
+          },
+          "rationale": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "rationaleMissing": {
+            "type": "boolean"
+          },
+          "appliesToRoles": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "OWNER",
+                "MANAGER",
+                "MARKETING",
+                "OPERATIONS",
+                "SALES",
+                "FRONT_DESK",
+                "EMPLOYEE"
+              ]
+            }
+          },
+          "tags": {
+            "type": "array",
+            "maxItems": 10,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            }
+          },
+          "sensitivity": {
+            "enum": [
+              "PUBLIC",
+              "INTERNAL",
+              "CONFIDENTIAL"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "relation": {
+            "enum": [
+              "UNRELATED",
+              "DUPLICATE",
+              "UPDATE",
+              "CONTRADICTION",
+              "EXCEPTION"
+            ]
+          },
+          "relatedMemoryIds": {
+            "type": "array",
+            "maxItems": 10,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "sourceMessageIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "evidenceExcerpt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        }
+      }
+    }
+  }
+}

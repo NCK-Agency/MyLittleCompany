@@ -1,0 +1,23 @@
+Read AGENTS.md and then read the project documents in the order it specifies.
+
+First, give me a concise implementation brief covering:
+1. the product promise,
+2. the non-negotiable trust rules,
+3. the exact MVP vertical slice,
+4. the proposed repository structure,
+5. the main technical risks.
+
+Then update PLANS.md with an executable plan for Phase 0 and Phase 1 only.
+
+Implement Phase 0 and Phase 1:
+- initialize a pnpm Next.js App Router project with TypeScript strict mode and Tailwind,
+- create the domain types and Zod schemas,
+- create repository and model interfaces with local adapters,
+- build the demo salon seed data,
+- build Home, Chat, Review, and Playbook navigation,
+- implement the local end-to-end flow from chat to suggested company knowledge to approval to retrieval,
+- use deterministic local fixtures for AI operations at first,
+- add tests for approval state transitions and exclusion of unapproved memory,
+- ensure pnpm lint, pnpm typecheck, pnpm test, and pnpm build pass.
+
+Do not add AWS integration yet. Do not add authentication, voice, website import, or optional sponsor integrations. Keep the UI polished and demoable. Record assumptions and verification results in PLANS.md.

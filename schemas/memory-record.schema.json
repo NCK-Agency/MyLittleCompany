@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mylittlecompany.local/schemas/memory-record.schema.json",
+  "title": "Approved Memory Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "companyId",
+    "type",
+    "status",
+    "currentVersion",
+    "title",
+    "appliesToRoles",
+    "sensitivity",
+    "tags",
+    "effectiveFrom",
+    "createdAt",
+    "updatedAt",
+    "indexStatus"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "companyId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "type": {
+      "enum": [
+        "COMPANY_FACT",
+        "CUSTOMER_INSIGHT",
+        "BRAND_RULE",
+        "POLICY",
+        "DECISION",
+        "SOP",
+        "LESSON"
+      ]
+    },
+    "status": {
+      "enum": [
+        "APPROVED",
+        "SUPERSEDED",
+        "ARCHIVED"
+      ]
+    },
+    "currentVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 120
+    },
+    "appliesToRoles": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "OWNER",
+          "MANAGER",
+          "MARKETING",
+          "OPERATIONS",
+          "SALES",
+          "FRONT_DESK",
+          "EMPLOYEE"
+        ]
+      }
+    },
+    "sensitivity": {
+      "enum": [
+        "PUBLIC",
+        "INTERNAL",
+        "CONFIDENTIAL"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 40
+      }
+    },
+    "effectiveFrom": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "supersedesMemoryId": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "supersededByMemoryId": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "indexStatus": {
+      "enum": [
+        "NOT_INDEXED",
+        "PENDING",
+        "READY",
+        "FAILED"
+      ]
+    },
+    "indexDocumentId": {
+      "type": "string",
+      "maxLength": 256
+    },
+    "lastIndexAttemptAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "indexErrorCode": {
+      "type": "string",
+      "maxLength": 128
+    }
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "company": {
+    "id": "demo-salon",
+    "name": "Maison Lumi\u00e8re Salon",
+    "description": "A premium neighborhood hair salon focused on personal service, thoughtful recommendations, and a calm customer experience.",
+    "productsOrServices": [
+      "Haircuts",
+      "Color services",
+      "Hair treatments",
+      "Styling"
+    ],
+    "primaryCustomers": [
+      "Busy local professionals",
+      "Customers preparing for important events",
+      "Clients who value consistent personal service"
+    ],
+    "differentiators": [
+      "Personal consultations",
+      "Premium but approachable experience",
+      "Long-term client relationships"
+    ],
+    "brandVoice": [
+      "Warm",
+      "Confident",
+      "Refined",
+      "Helpful",
+      "Never pushy"
+    ],
+    "timezone": "Asia/Ho_Chi_Minh",
+    "createdAt": "2026-07-11T00:00:00.000Z",
+    "updatedAt": "2026-07-11T00:00:00.000Z"
+  },
+  "memberships": [
+    {
+      "companyId": "demo-salon",
+      "userId": "user-owner-demo",
+      "displayName": "Maya",
+      "roles": [
+        "OWNER"
+      ],
+      "status": "ACTIVE",
+      "createdAt": "2026-07-11T00:00:00.000Z",
+      "updatedAt": "2026-07-11T00:00:00.000Z"
+    },
+    {
+      "companyId": "demo-salon",
+      "userId": "user-employee-demo",
+      "displayName": "Lina",
+      "roles": [
+        "EMPLOYEE",
+        "FRONT_DESK"
+      ],
+      "status": "ACTIVE",
+      "createdAt": "2026-07-11T00:00:00.000Z",
+      "updatedAt": "2026-07-11T00:00:00.000Z"
+    }
+  ],
+  "approvedMemories": [
+    {
+      "id": "mem-brand-voice",
+      "companyId": "demo-salon",
+      "type": "BRAND_RULE",
+      "status": "APPROVED",
+      "currentVersion": 1,
+      "title": "Use a warm premium voice",
+      "appliesToRoles": [
+        "OWNER",
+        "MARKETING",
+        "SALES",
+        "FRONT_DESK",
+        "EMPLOYEE"
+      ],
+      "sensitivity": "INTERNAL",
+      "tags": [
+        "brand",
+        "voice"
+      ],
+      "effectiveFrom": "2026-07-11T00:00:00.000Z",
+      "createdAt": "2026-07-11T00:00:00.000Z",
+      "updatedAt": "2026-07-11T00:00:00.000Z",
+      "indexStatus": "READY",
+      "version": {
+        "memoryId": "mem-brand-voice",
+        "companyId": "demo-salon",
+        "version": 1,
+        "title": "Use a warm premium voice",
+        "statement": "Customer communication should feel warm, confident, refined, helpful, and never pushy.",
+        "rationale": "The salon should feel premium without making customers feel pressured or unwelcome.",
+        "appliesToRoles": [
+          "OWNER",
+          "MARKETING",
+          "SALES",
+          "FRONT_DESK",
+          "EMPLOYEE"
+        ],
+        "sensitivity": "INTERNAL",
+        "tags": [
+          "brand",
+          "voice"
+        ],
+        "effectiveFrom": "2026-07-11T00:00:00.000Z",
+        "sourceRefs": [
+          {
+            "sourceId": "source-demo-profile",
+            "label": "Demo company profile"
+          }
+        ],
+        "approvedBy": "user-owner-demo",
+        "approvedAt": "2026-07-11T00:00:00.000Z",
+        "createdAt": "2026-07-11T00:00:00.000Z"
+      }
+    },
+    {
+      "id": "mem-customer-profile",
+      "companyId": "demo-salon",
+      "type": "CUSTOMER_INSIGHT",
+      "status": "APPROVED",
+      "currentVersion": 1,
+      "title": "Primary customers value convenience and personal service",
+      "appliesToRoles": [
+        "OWNER",
+        "MARKETING",
+        "SALES",
+        "FRONT_DESK",
+        "EMPLOYEE"
+      ],
+      "sensitivity": "INTERNAL",
+      "tags": [
+        "customers"
+      ],
+      "effectiveFrom": "2026-07-11T00:00:00.000Z",
+      "createdAt": "2026-07-11T00:00:00.000Z",
+      "updatedAt": "2026-07-11T00:00:00.000Z",
+      "indexStatus": "READY",
+      "version": {
+        "memoryId": "mem-customer-profile",
+        "companyId": "demo-salon",
+        "version": 1,
+        "title": "Primary customers value convenience and personal service",
+        "statement": "The salon primarily serves busy local professionals and clients who value consistent personal attention.",
+        "rationale": "Campaigns and procedures should respect limited customer time while preserving a personal experience.",
+        "appliesToRoles": [
+          "OWNER",
+          "MARKETING",
+          "SALES",
+          "FRONT_DESK",
+          "EMPLOYEE"
+        ],
+        "sensitivity": "INTERNAL",
+        "tags": [
+          "customers"
+        ],
+        "effectiveFrom": "2026-07-11T00:00:00.000Z",
+        "sourceRefs": [
+          {
+            "sourceId": "source-demo-profile",
+            "label": "Demo company profile"
+          }
+        ],
+        "approvedBy": "user-owner-demo",
+        "approvedAt": "2026-07-11T00:00:00.000Z",
+        "createdAt": "2026-07-11T00:00:00.000Z"
+      }
+    }
+  ]
+}

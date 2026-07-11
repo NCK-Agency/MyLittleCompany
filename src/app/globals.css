@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f4ee;
+  --foreground: #27231f;
+  --surface: #fffdf8;
+  --muted: #706961;
+  --accent: #7b4d3a;
+  --accent-strong: #623b2c;
+  --border: #ded6cb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--background);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 85% 10%, rgb(203 173 137 / 18%), transparent 28rem),
+    var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+a {
+  color: inherit;
+}
+
+button, input, textarea {
+  font: inherit;
+}
+
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 3px solid rgb(123 77 58 / 35%);
+  outline-offset: 2px;
+}
+
+@layer components {
+  .action-card {
+    @apply flex min-h-32 flex-col justify-between rounded-2xl border border-[var(--border)] bg-[#f7f1e8] p-5 transition hover:-translate-y-0.5 hover:bg-[#f0e7da];
+  }
+  .action-card span {
+    @apply mt-4 text-sm leading-5 text-[var(--muted)];
+  }
+  .primary-button {
+    @apply rounded-full bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .secondary-button {
+    @apply rounded-full border border-[var(--border)] bg-[var(--surface)] px-5 py-2.5 text-sm font-semibold transition hover:bg-[#efe7dc] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .quiet-button {
+    @apply rounded-full px-4 py-2.5 text-sm font-semibold text-[var(--muted)] hover:bg-[#efe7dc] disabled:opacity-50;
+  }
+  .field-label {
+    @apply block text-sm font-semibold;
+  }
+  .text-input {
+    @apply mt-2 w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3 font-normal text-[var(--foreground)] shadow-inner outline-none focus:border-[var(--accent)];
+  }
+}
