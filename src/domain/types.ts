@@ -8,6 +8,7 @@ export type CompanyRole =
   | "EMPLOYEE";
 
 export type AssistantRole = "MARKETING" | "OPERATIONS" | "EMPLOYEE";
+export type AssistantModelTier = "FAST" | "BALANCED" | "BEST";
 export type MemoryType =
   | "COMPANY_FACT"
   | "CUSTOMER_INSIGHT"
@@ -106,6 +107,7 @@ export interface Company {
   id: string;
   name: string;
   description: string;
+  assistantModelTier: AssistantModelTier;
   productsOrServices: string[];
   primaryCustomers: string[];
   differentiators: string[];
@@ -114,6 +116,18 @@ export interface Company {
   timezone: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AssistantModelOption {
+  tier: AssistantModelTier;
+  label: string;
+  description: string;
+  modelId: string;
+}
+
+export interface AssistantSettings {
+  modelTier: AssistantModelTier;
+  options: readonly AssistantModelOption[];
 }
 
 export interface SourceReference {
@@ -219,6 +233,8 @@ export interface Message {
   actorId?: string;
   content: string;
   sourceRefs: SourceReference[];
+  sop?: SopDraft;
+  groundedAnswer?: GroundedAnswer;
   createdAt: string;
 }
 
@@ -311,6 +327,7 @@ export interface SopDraft {
   outputs: string[];
   assumptions: string[];
   sourceMemories: Array<{ memoryId: string; version: number }>;
+  metadata?: ModelOperationMetadata;
 }
 
 export interface AuditEvent {

@@ -54,7 +54,7 @@ Use the complete app profile and acceptance prompts in `docs/CHATGPT_APP.md`.
 4. State a durable company rule and explicitly ask ChatGPT to suggest it. Confirm
    the result says `PROPOSED` and links to Review.
 5. Confirm the suggestion is absent from search. Approve it in Review, wait for
-   indexing to become `READY`, then search again and confirm it appears.
+   repository search to become `READY`, then search again and confirm it appears.
 6. Revoke the connector or disable the membership and confirm the next request
    cannot access company data.
 
@@ -71,7 +71,7 @@ url = "https://<your-origin>/mcp"
 ```
 
 Run the same search, fetch, suggestion, pre-approval exclusion, Review approval,
-and post-index search checks. Confirm Codex asks for normal write approval before
+and post-approval search checks. Confirm Codex asks for normal write approval before
 calling `suggest_company_knowledge`, while `search` and `fetch` remain read-only.
 
 ## Claude Code smoke

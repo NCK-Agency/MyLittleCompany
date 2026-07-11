@@ -101,7 +101,7 @@ describe("local salon flow", () => {
     const input = { content: "Tuesdays are quiet. Create a promotion.", idempotencyKey: "same-message-key" };
     await conversationService.send(conversation.id, input, ownerActor());
     const duplicate = await conversationService.send(conversation.id, input, ownerActor());
-    expect(duplicate.assistantMessage).toBeNull();
+    expect(duplicate.assistantMessage?.actorType).toBe("ASSISTANT");
     expect(await conversationService.listMessages(conversation.id, ownerActor())).toHaveLength(2);
   });
 

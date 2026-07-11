@@ -48,6 +48,10 @@ export function apiError(error: unknown): Response {
           ? "Too many requests. Please wait a moment and try again."
         : code === "NO_APPROVED_CONTEXT"
           ? "No approved company rule is available yet."
+        : code === "MODEL_UNAVAILABLE"
+          ? "This assistant model is temporarily unavailable."
+        : code === "PROVIDER_TIMEOUT"
+          ? "The assistant took too long to respond. Please try again."
           : "Something went wrong. Please try again.";
   console.error(JSON.stringify({
     level: "error",

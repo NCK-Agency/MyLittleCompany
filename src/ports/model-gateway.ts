@@ -15,18 +15,22 @@ export interface GeneratedText {
 
 export interface ModelGateway {
   generateMarketingResponse(input: {
+    companyId: string;
     message: string;
     approvedMemories: HydratedMemory[];
   }): Promise<GeneratedText>;
   generateEmployeeResponse(input: {
+    companyId: string;
     question: string;
     approvedMemories: HydratedMemory[];
   }): Promise<GeneratedText>;
   generateProofResponse(input: {
+    companyId: string;
     question: string;
     approvedMemories: HydratedMemory[];
   }): Promise<GeneratedText>;
   extractCandidate(input: {
+    companyId: string;
     ownerMessage: Message;
     createdBy: string;
   }): Promise<MemoryCandidate | null>;
@@ -41,6 +45,7 @@ export interface ModelGateway {
     };
   }): Promise<MemoryCandidate[]>;
   classifyRelationship(input: {
+    companyId: string;
     candidate: MemoryCandidate;
     approvedMemories: HydratedMemory[];
   }): Promise<{
@@ -52,6 +57,7 @@ export interface ModelGateway {
     metadata?: ModelOperationMetadata;
   }>;
   generateSop(input: {
+    companyId: string;
     request: string;
     approvedMemories: HydratedMemory[];
   }): Promise<SopDraft>;

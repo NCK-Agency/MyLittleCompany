@@ -1,4 +1,4 @@
-import { createConversationSchema, sendMessageSchema } from "@/domain/schemas";
+import { createConversationSchema, sendMessageSchema, sopDraftSchema } from "@/domain/schemas";
 import { canAccess, isOwner } from "@/domain/authorization";
 import { appError } from "@/domain/errors";
 import { NO_APPROVED_COMPANY_RULE } from "@/domain/grounding";
@@ -62,16 +62,14 @@ export class ConversationService {
     const conversation = await this.conversations.get(conversationId, actor.companyId);
     if (!conversation) throw appError("NOT_FOUND");
     this.assertConversationAccess(conversation, actor);
-    const existing = await this.conversations.findMessageByIdempotencyKey(
+    const existingOwner = await this.conversations.findMessageByIdempotencyKey(
       actor.companyId,
       conversationId,
       values.idempotencyKey,
     );
-    if (existing) {
-      return { ownerMessage: existing, assistantMessage: null, suggestedKnowledge: [] };
-    }
-    const now = new Date().toISOString();
-    const ownerMessage: Message = {
+    if (existingOwner && existingOwner.content !== values.content) throw appError("CONFLICT");
+    const now = existingOwner?.createdAt ?? new Date().toISOString();
+    const ownerMessage: Message = existingOwner ?? {
       id: `message-${crypto.randomUUID()}`,
       companyId: actor.companyId,
       conversationId,
@@ -81,17 +79,34 @@ export class ConversationService {
       sourceRefs: [],
       createdAt: now,
     };
-    const persistedOwner = await this.conversations.appendMessage(ownerMessage, values.idempotencyKey);
-    if (persistedOwner.id !== ownerMessage.id) {
-      return { ownerMessage: persistedOwner, assistantMessage: null, suggestedKnowledge: [] };
-    }
     const source = {
       sourceId: `source-${ownerMessage.id}`,
       label: conversation.title,
       messageId: ownerMessage.id,
       excerpt: ownerMessage.content.slice(0, 300),
     };
-    await this.sources.saveConversationSource(actor.companyId, source);
+    if (existingOwner) {
+      const completedAssistant = await this.findCompletedAssistant(existingOwner);
+      if (completedAssistant) {
+        const candidate = conversation.assistantRole === "MARKETING" && canAccess(actor, "SUGGEST", conversation.scope)
+          ? await this.suggestions.suggestFromConversation({
+            content: values.content,
+            idempotencyKey: values.idempotencyKey,
+            scope: conversation.scope,
+            conversationId: conversation.id,
+            messageId: existingOwner.id,
+            source,
+          }, actor)
+          : null;
+        return {
+          ownerMessage: existingOwner,
+          assistantMessage: completedAssistant,
+          suggestedKnowledge: candidate ? [candidate] : [],
+          sop: completedAssistant.sop,
+          groundedAnswer: completedAssistant.groundedAnswer,
+        };
+      }
+    }
     const requestedRoles = conversation.assistantRole === "EMPLOYEE"
       ? ["EMPLOYEE", "FRONT_DESK"] as const
       : [conversation.assistantRole];
@@ -103,7 +118,20 @@ export class ConversationService {
     let groundedAnswer: GroundedAnswer | undefined;
 
     if (conversation.assistantRole === "OPERATIONS") {
-      sop = await this.model.generateSop({ request: values.content, approvedMemories: approved });
+      const generatedSop = await this.model.generateSop({
+        companyId: actor.companyId,
+        request: values.content,
+        approvedMemories: approved,
+      });
+      sop = {
+        ...sopDraftSchema.parse({
+          ...generatedSop,
+          sourceMemories: generatedSop.sourceMemories.filter((sourceMemory) => approved.some((memory) =>
+            memory.record.id === sourceMemory.memoryId && memory.version.version === sourceMemory.version)),
+        }),
+        metadata: generatedSop.metadata,
+      };
+      if (sop.sourceMemories.length === 0) throw appError("NO_APPROVED_CONTEXT");
       generated = {
         content: [
           sop.title,
@@ -114,6 +142,7 @@ export class ConversationService {
       };
     } else if (conversation.assistantRole === "EMPLOYEE") {
       generated = await this.model.generateEmployeeResponse({
+        companyId: actor.companyId,
         question: values.content,
         approvedMemories: approved,
       });
@@ -135,6 +164,7 @@ export class ConversationService {
       };
     } else {
       generated = await this.model.generateMarketingResponse({
+        companyId: actor.companyId,
         message: values.content,
         approvedMemories: approved,
       });
@@ -150,8 +180,17 @@ export class ConversationService {
       actorType: "ASSISTANT",
       content: generated.content,
       sourceRefs,
+      sop,
+      groundedAnswer,
       createdAt: new Date().toISOString(),
     };
+    if (!existingOwner) {
+      const persistedOwner = await this.conversations.appendMessage(ownerMessage, values.idempotencyKey);
+      if (persistedOwner.id !== ownerMessage.id) {
+        return { ownerMessage: persistedOwner, assistantMessage: null, suggestedKnowledge: [] };
+      }
+    }
+    await this.sources.saveConversationSource(actor.companyId, source);
     await this.conversations.appendMessage(assistantMessage);
     const candidate = conversation.assistantRole === "MARKETING" && canAccess(actor, "SUGGEST", conversation.scope)
       ? await this.suggestions.suggestFromConversation({
@@ -177,5 +216,16 @@ export class ConversationService {
     if (!canAccess(actor, "READ", conversation.scope) && !canAccess(actor, "SUGGEST", conversation.scope)) {
       throw appError("FORBIDDEN");
     }
+  }
+
+  private async findCompletedAssistant(ownerMessage: Message): Promise<Message | null> {
+    const messages = await this.conversations.listMessages(ownerMessage.conversationId, ownerMessage.companyId);
+    const ownerIndex = messages.findIndex((message) => message.id === ownerMessage.id);
+    if (ownerIndex < 0) return null;
+    for (const message of messages.slice(ownerIndex + 1)) {
+      if (message.actorType === "USER") return null;
+      if (message.actorType === "ASSISTANT") return message;
+    }
+    return null;
   }
 }

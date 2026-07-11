@@ -99,4 +99,27 @@ describe("MLC assistant-ui thread", () => {
     await waitFor(() => expect(screen.getByLabelText("Message Marketing")).toHaveValue("Create a Tuesday promotion"));
     expect(screen.getByText("Could not send the message.")).toHaveAttribute("aria-live", "polite");
   });
+
+  it("offers retry and owner settings when the selected model is unavailable", async () => {
+    const onNew = vi.fn(async () => undefined);
+    render(
+      <MlcThread
+        error="This assistant model is temporarily unavailable."
+        isRunning={false}
+        messages={[]}
+        onCandidateChanged={vi.fn()}
+        onNew={onNew}
+        onSaveSop={vi.fn()}
+        restoreDraft={{ text: "Create a Tuesday promotion", requestId: 2 }}
+        role="MARKETING"
+        showModelSettings
+        status=""
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Message Marketing")).toHaveValue("Create a Tuesday promotion"));
+    expect(screen.getByRole("link", { name: "Assistant settings" })).toHaveAttribute("href", "/workspace#assistant-settings");
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(onNew).toHaveBeenCalledOnce());
+  });
 });

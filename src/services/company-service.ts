@@ -1,6 +1,7 @@
 import { appError } from "@/domain/errors";
 import { isOwner } from "@/domain/authorization";
-import type { ActorContext, Company } from "@/domain/types";
+import { updateAssistantSettingsSchema } from "@/domain/schemas";
+import type { ActorContext, AssistantModelTier, Company } from "@/domain/types";
 import type { CompanyRepository } from "@/ports/company-repository";
 import { z } from "zod";
 
@@ -26,6 +27,23 @@ export class CompanyService {
     const values = updateCompanySchema.parse(input);
     const company = await this.get(actor);
     return this.companies.update({ ...company, ...values, updatedAt: new Date().toISOString() });
+  }
+
+  async getAssistantModelTier(actor: ActorContext): Promise<AssistantModelTier> {
+    if (!isOwner(actor)) throw appError("FORBIDDEN");
+    return (await this.get(actor)).assistantModelTier;
+  }
+
+  async updateAssistantModelTier(input: unknown, actor: ActorContext): Promise<AssistantModelTier> {
+    if (!isOwner(actor)) throw appError("FORBIDDEN");
+    const { modelTier } = updateAssistantSettingsSchema.parse(input);
+    const company = await this.get(actor);
+    const updated = await this.companies.update({
+      ...company,
+      assistantModelTier: modelTier,
+      updatedAt: new Date().toISOString(),
+    });
+    return updated.assistantModelTier;
   }
 
   async resetDemo(actor: ActorContext): Promise<Company> {

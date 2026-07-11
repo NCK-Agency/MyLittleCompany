@@ -71,7 +71,7 @@ Use direct, helpful copy:
 - “I found a possible conflict with an existing rule.”
 - “I could not find an approved company rule for this.”
 - “Saved, but still being added to search.”
-- “The knowledge was approved, but search indexing failed. Retry.”
+- “The knowledge was approved, but it is not available to assistants yet. Retry.”
 
 Avoid anthropomorphic claims such as “I know everything about your company.”
 
@@ -130,6 +130,39 @@ action obvious after the public story has been understood.
 #### Empty state
 
 > “Start by describing your company or asking for help with a real task.”
+
+### 5.1.2 Assistant settings
+
+#### Purpose
+
+Let an owner choose a simple company-wide balance of response speed and quality
+without turning the product into a model configuration console.
+
+#### Location and access
+
+Assistant settings is an owner-only section inside `/workspace`. It is secondary
+to the normal workspace content and does not add a primary-navigation item.
+
+#### Required choices
+
+- **Fast** — “Quick responses for everyday work.”
+- **Balanced** — “A dependable mix of speed and quality.” This is the default.
+- **Best quality** — “More care for complex or important work.”
+
+Show the server-approved OpenAI model name as muted secondary detail. The browser
+may choose only Fast, Balanced, or Best quality; it never accepts a custom model
+name or displays the API key.
+
+Saving updates the company setting and applies to the next assistant request.
+Existing messages remain unchanged. Employees may not view or change this
+control, including through a direct URL or API request.
+
+If the selected model is unavailable, keep the user's draft and show:
+
+> “This assistant model is temporarily unavailable.”
+
+Offer `Retry` and, for owners, `Choose another model` linking back to Assistant
+settings. Never switch tiers or use fixture output automatically.
 
 ### 5.2 Chat
 
@@ -217,11 +250,9 @@ Tuesday campaign conversation · Today
 #### Approval behavior
 
 - Optimistically show that the owner action was received only after the server confirms the state transition.
-- Then show indexing status separately:
-  - Adding to Playbook.
-  - Ready.
-  - Needs retry.
-- Never show “Ready” before the index confirms success.
+- Then show assistant availability separately: Updating, Available, or Needs retry.
+- Repository retrieval normally becomes Available with the approved write; never
+  show it before the server confirms the current record can be retrieved.
 
 ### 5.4 Review
 
@@ -422,15 +453,22 @@ The conversation response may still succeed. Show:
 
 Do not update the card to approved. Preserve edits and show retry.
 
-### Indexing failure
+### Assistant-search failure
 
-The DynamoDB record may be approved while indexing fails. Show:
+The DynamoDB record may be approved while repository retrieval is unavailable. Show:
 
-> “Approved in the Playbook, but not yet available to assistants. Retry adding it to search.”
+> “Approved in the Playbook, but not yet available to assistants. Retry.”
 
 ### Retrieval failure
 
 Do not fabricate. Show a general response only if clearly labeled, or ask the user to retry.
+
+### Live model failure
+
+Preserve the draft or retryable operation. Show “This assistant model is
+temporarily unavailable,” a `Retry` action, and an owner-only link to Assistant
+settings. Do not claim that work was generated and do not substitute test fixture
+content.
 
 ## 9. Demo mode
 
@@ -438,10 +476,14 @@ The demo environment should include:
 
 - A visible but unobtrusive “Demo company” label.
 - A reset action available from settings or the Home footer.
-- Deterministic salon fixture data.
+- Deterministic salon company and reset data, clearly labelled as demo data.
+- Live OpenAI generation for every assistant-produced answer, suggestion,
+  campaign, conflict assessment, and SOP in hosted mode.
 - Optional presenter shortcuts hidden behind `?presenter=1`, but the normal flow must remain usable without them.
 
-Do not fake external service success. Demo mode may use local adapters only when clearly configured as local mode.
+Do not fake external service success. The fixture model is permitted only in
+automated tests or an explicitly labelled offline mode; hosted OpenAI failures
+remain visible and retryable.
 
 ## 10. Proof-first onboarding
 

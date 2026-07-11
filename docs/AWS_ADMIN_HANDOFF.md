@@ -1,9 +1,13 @@
-# AWS admin handoff for the hosted demo
+# AWS admin handoff for durable hosting
+
+The active demo needs AWS only for DynamoDB, private S3, and Cognito. Generation
+uses OpenAI and retrieval reads approved structured records through the active
+memory repository. Do not create or grant access to an AWS model runtime,
+embedding service, vector store, or managed knowledge-search resource.
 
 The `MyLittleCompanyDeveloperRole` created the DynamoDB table and Cognito
-resources, but AWS denied `iam:GetRole`. Do not broaden that developer role.
-An administrator should create only the two identities below, then create the
-Knowledge Base with the existing resources.
+resources, but AWS denied `iam:GetRole`. Do not broaden that developer role. An
+administrator should create only the scoped Netlify runtime identity below.
 
 ## Resources already ready
 
@@ -12,134 +16,22 @@ Knowledge Base with the existing resources.
 | Region | `us-east-1` |
 | DynamoDB table | `my-little-company-demo` |
 | Table GSI / TTL | `GSI1` active / `ttl` enabled |
-| Source bucket | `my-little-company-392300786566-us-east-1` |
-| Source prefix | `memories/` |
-| Imported-source prefix | `imports/` |
-| S3 Vectors bucket | `my-little-company-vectors-392300786566-us-east-1` |
-| S3 Vectors index | `my-little-company-memory-index` |
-| Vector dimensions | `1024` |
-| Embedding model | `amazon.titan-embed-text-v2:0` |
-| Generation model | `amazon.nova-lite-v1:0` |
+| Private source bucket | `my-little-company-392300786566-us-east-1` |
+| Source prefixes | `sources/`, `imports/`, `memories/`, `artifacts/` |
 | Cognito pool | `us-east-1_EsaGXBUCL` |
 | Netlify origin | `https://my-little-company-demo.netlify.app` |
 
 Only synthetic salon data is in scope.
 
-## 1. Create the Knowledge Base service role
+## 1. Create the Netlify runtime identity
 
-Create `AmazonBedrockExecutionRoleForKB-MLC` with this trust policy. Replace
-`<ACCOUNT_ID>` once; do not replace the wildcard with a different service.
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": { "Service": "bedrock.amazonaws.com" },
-    "Action": "sts:AssumeRole",
-    "Condition": {
-      "StringEquals": { "aws:SourceAccount": "<ACCOUNT_ID>" },
-      "ArnLike": {
-        "aws:SourceArn": "arn:aws:bedrock:us-east-1:<ACCOUNT_ID>:knowledge-base/*"
-      }
-    }
-  }]
-}
-```
-
-Attach this inline policy as `MyLittleCompanyKnowledgeBaseAccess`:
+Create a dedicated IAM user named `my-little-company-netlify-demo`. Replace
+`<ACCOUNT_ID>` in this policy and attach no broader permissions:
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
-    {
-      "Sid": "EmbedWithTitanV2",
-      "Effect": "Allow",
-      "Action": "bedrock:InvokeModel",
-      "Resource": "arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-embed-text-v2:0"
-    },
-    {
-      "Sid": "ListMemorySourcePrefix",
-      "Effect": "Allow",
-      "Action": "s3:ListBucket",
-      "Resource": "arn:aws:s3:::my-little-company-392300786566-us-east-1",
-      "Condition": {
-        "StringLike": { "s3:prefix": ["memories", "memories/*"] }
-      }
-    },
-    {
-      "Sid": "ReadMemorySources",
-      "Effect": "Allow",
-      "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::my-little-company-392300786566-us-east-1/memories/*"
-    },
-    {
-      "Sid": "UseExistingVectorIndex",
-      "Effect": "Allow",
-      "Action": [
-        "s3vectors:GetIndex",
-        "s3vectors:GetVectors",
-        "s3vectors:PutVectors",
-        "s3vectors:DeleteVectors",
-        "s3vectors:QueryVectors"
-      ],
-      "Resource": "arn:aws:s3vectors:us-east-1:<ACCOUNT_ID>:bucket/my-little-company-vectors-392300786566-us-east-1/index/my-little-company-memory-index"
-    }
-  ]
-}
-```
-
-## 2. Create the Knowledge Base and data source
-
-Create a vector Knowledge Base named `my-little-company-memory`:
-
-- service role: `AmazonBedrockExecutionRoleForKB-MLC`;
-- Titan Text Embeddings V2;
-- embedding dimensions: `1024`, data type `FLOAT32`;
-- existing S3 Vectors index `my-little-company-memory-index`;
-- no new vector bucket or index.
-
-Attach an S3 data source named `my-little-company-memories`:
-
-- bucket: `my-little-company-392300786566-us-east-1`;
-- inclusion prefix: `memories/`;
-- chunking: **No chunking**;
-- deletion policy: retain.
-
-No chunking is intentional because each canonical memory document is compact,
-structured, and independently versioned. Changing chunking requires replacing
-the data source.
-
-Start one ingestion job and wait for `COMPLETE`. Record the Knowledge Base ID and
-data source ID; Codex will then run `pnpm smoke:aws` and a filtered retrieval.
-
-## 3. Create the Netlify runtime identity
-
-Create a dedicated IAM user named `my-little-company-netlify-demo`. Attach this
-policy after replacing `<ACCOUNT_ID>`, `<KB_ID>`, and `<DATA_SOURCE_ID>`:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "GenerateWithNovaLite",
-      "Effect": "Allow",
-      "Action": "bedrock:InvokeModel",
-      "Resource": "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0"
-    },
-    {
-      "Sid": "UseApprovedMemoryIndex",
-      "Effect": "Allow",
-      "Action": [
-        "bedrock:Retrieve",
-        "bedrock:IngestKnowledgeBaseDocuments",
-        "bedrock:GetKnowledgeBaseDocuments",
-        "bedrock:DeleteKnowledgeBaseDocuments"
-      ],
-      "Resource": "arn:aws:bedrock:us-east-1:<ACCOUNT_ID>:knowledge-base/<KB_ID>"
-    },
     {
       "Sid": "UseDemoTable",
       "Effect": "Allow",
@@ -159,7 +51,12 @@ policy after replacing `<ACCOUNT_ID>`, `<KB_ID>`, and `<DATA_SOURCE_ID>`:
     {
       "Sid": "UseDemoSourcePrefixes",
       "Effect": "Allow",
-      "Action": ["s3:GetObject", "s3:PutObject", "s3:PutObjectTagging", "s3:DeleteObject"],
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:PutObjectTagging",
+        "s3:DeleteObject"
+      ],
       "Resource": [
         "arn:aws:s3:::my-little-company-392300786566-us-east-1/sources/*",
         "arn:aws:s3:::my-little-company-392300786566-us-east-1/imports/*",
@@ -170,34 +67,53 @@ policy after replacing `<ACCOUNT_ID>`, `<KB_ID>`, and `<DATA_SOURCE_ID>`:
     {
       "Sid": "InviteDemoMembersOnly",
       "Effect": "Allow",
-      "Action": ["cognito-idp:AdminGetUser", "cognito-idp:AdminCreateUser"],
+      "Action": [
+        "cognito-idp:AdminGetUser",
+        "cognito-idp:AdminCreateUser"
+      ],
       "Resource": "arn:aws:cognito-idp:us-east-1:<ACCOUNT_ID>:userpool/us-east-1_EsaGXBUCL"
     }
   ]
 }
 ```
 
-Before enabling proof-first onboarding, add the S3 Lifecycle rules documented in
-`docs/AWS_SETUP.md` for objects under `imports/`: expire objects tagged
-`retention=zero-candidate-24-hours` after one day,
-`retention=all-ignored-7-days` after seven days, and
-`retention=unapproved-30-days` after 30 days. Objects tagged
-`retention=approved` must not expire automatically.
+The policy intentionally contains no model, embedding, vector, or managed-search
+actions. OpenAI credentials are separate Netlify secrets and never belong in an
+AWS IAM policy.
 
-Create one access key. Enter it directly into Netlify as non-readable production
+## 2. Apply private-source retention
+
+Add the S3 Lifecycle rules documented in `docs/AWS_SETUP.md` for objects under
+`imports/`:
+
+- `retention=zero-candidate-24-hours`: expire after one day.
+- `retention=all-ignored-7-days`: expire after seven days.
+- `retention=unapproved-30-days`: expire after 30 days.
+- `retention=approved`: do not expire automatically.
+
+Keep all public-access blocks and encryption enabled. Do not grant bucket-wide
+listing or public object access.
+
+## 3. Store runtime credentials
+
+Create one access key. Enter it directly into Netlify as non-readable Functions
 secrets named `MLC_AWS_ACCESS_KEY_ID` and `MLC_AWS_SECRET_ACCESS_KEY`. Netlify
-reserves the standard AWS credential names. Do not paste the secret into chat,
-a terminal transcript, `.env.local`, or Git.
+reserves the standard AWS credential names.
 
-Delete or rotate the access key immediately after the presentation.
+Store `OPENAI_API_KEY` separately as a non-readable Functions secret. Configure
+the three non-secret, server-only allowed model IDs as described in
+`docs/NETLIFY_DEPLOY.md`. Do not paste any secret into chat, terminal output,
+`.env.local` committed to Git, or deployment logs.
+
+Delete or rotate the AWS access key immediately after the presentation.
 
 ## 4. Completion evidence
 
 Return only:
 
-- the Knowledge Base ID;
-- the data source ID;
-- confirmation that the ingestion job completed;
-- confirmation that the Netlify runtime access key was stored in Netlify.
+- confirmation that the scoped runtime policy was attached;
+- confirmation that the S3 Lifecycle rules are active;
+- confirmation that the AWS runtime access key and OpenAI API key were stored as
+  non-readable Netlify Functions secrets.
 
-Do not return the secret access key.
+Do not return either secret value.

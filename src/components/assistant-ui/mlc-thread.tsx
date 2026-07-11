@@ -12,6 +12,7 @@ import {
   useExternalStoreRuntime,
 } from "@assistant-ui/react";
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef } from "react";
+import Link from "next/link";
 import type { AssistantRole, GroundedAnswer, MemoryCandidate, SourceReference } from "@/domain/types";
 import { BrandMark } from "../brand-mark";
 import { CandidateCard } from "../candidate-card";
@@ -156,6 +157,16 @@ function DraftRestorer({ value }: { value: { text: string; requestId: number } |
   return null;
 }
 
+function RecoveryActions({ showModelSettings }: { showModelSettings: boolean }): ReactNode {
+  const runtime = useAssistantRuntime();
+  return (
+    <span className="flex flex-wrap items-center gap-3">
+      <button className="font-black underline" onClick={() => runtime.thread.composer.send()} type="button">Retry</button>
+      {showModelSettings && <Link className="font-black underline" href="/workspace#assistant-settings">Assistant settings</Link>}
+    </span>
+  );
+}
+
 function Starter({ role }: { role: AssistantRole }): ReactNode {
   const runtime = useAssistantRuntime();
 
@@ -207,6 +218,7 @@ export function MlcThread({
   status,
   error,
   restoreDraft,
+  showModelSettings = false,
   onNew,
   onCandidateChanged,
   onSaveSop,
@@ -217,6 +229,7 @@ export function MlcThread({
   status: string;
   error: string;
   restoreDraft: { text: string; requestId: number } | null;
+  showModelSettings?: boolean;
   onNew(message: AppendMessage): Promise<void>;
   onCandidateChanged(candidate: MemoryCandidate): void;
   onSaveSop(messageId: string): void;
@@ -263,7 +276,10 @@ export function MlcThread({
                   <ComposerPrimitive.Send className="primary-button" type="button">{copy.send}</ComposerPrimitive.Send>
                 </div>
               </ComposerPrimitive.Root>
-              <p aria-live="polite" className={`min-h-5 px-1 pt-2 text-sm font-bold ${error ? "text-[var(--danger)]" : "text-[var(--cobalt)]"}`}>{error || (!isRunning ? status : "")}</p>
+              <div className={`min-h-5 px-1 pt-2 text-sm font-bold ${error ? "text-[var(--danger)]" : "text-[var(--cobalt)]"}`}>
+                <p aria-live="polite">{error || (!isRunning ? status : "")}</p>
+                {error && restoreDraft && <RecoveryActions showModelSettings={showModelSettings} />}
+              </div>
             </ThreadPrimitive.ViewportFooter>
           </ThreadPrimitive.Viewport>
         </ThreadPrimitive.Root>

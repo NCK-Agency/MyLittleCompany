@@ -1,13 +1,9 @@
-import { BedrockAgentClient } from "@aws-sdk/client-bedrock-agent";
-import { BedrockAgentRuntimeClient } from "@aws-sdk/client-bedrock-agent-runtime";
-import { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { S3Client } from "@aws-sdk/client-s3";
 import { CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider";
+import OpenAI from "openai";
 import { CognitoIdentityAdmin } from "@/adapters/aws/cognito-identity-admin";
-import { BedrockKnowledgeIndex } from "@/adapters/aws/bedrock-knowledge-index";
-import { BedrockModelGateway } from "@/adapters/aws/bedrock-model-gateway";
 import { DynamoRepositories } from "@/adapters/aws/dynamodb-repositories";
 import { DynamoOAuthRepository } from "@/adapters/aws/dynamodb-oauth-repository";
 import { DynamoImportRepository } from "@/adapters/aws/dynamodb-import-repository";
@@ -25,7 +21,9 @@ import { LocalOAuthRepository } from "@/adapters/local/oauth-repository";
 import { LocalSourceRepository } from "@/adapters/local/source-repository";
 import { LocalSourceImporter } from "@/adapters/local/source-importer";
 import { LocalWaitlistRepository } from "@/adapters/local/waitlist-repository";
+import { OpenAIModelGateway } from "@/adapters/openai/openai-model-gateway";
 import { RepositoryKnowledgeIndex } from "@/adapters/repository-knowledge-index";
+import { appError } from "@/domain/errors";
 import { env } from "@/lib/env";
 import type { CompanyRepository } from "@/ports/company-repository";
 import type { ConversationRepository } from "@/ports/conversation-repository";
@@ -49,6 +47,7 @@ import { OnboardingService } from "@/services/onboarding-service";
 import { OAuthService } from "@/oauth/oauth-service";
 import { SopService } from "@/services/sop-service";
 import { WaitlistService } from "@/services/waitlist-service";
+import { modelIdForTier } from "@/server/model-catalog";
 
 interface Dependencies {
   companies: CompanyRepository;
@@ -60,6 +59,8 @@ interface Dependencies {
   sources: SourceRepository;
   imports: ImportRepository;
 }
+
+type PersistenceDependencies = Omit<Dependencies, "model">;
 
 function awsSdkConfig(region: string) {
   const credentials = env.MLC_AWS_ACCESS_KEY_ID && env.MLC_AWS_SECRET_ACCESS_KEY
@@ -77,7 +78,7 @@ function configuredAwsRegion(): string {
   return region;
 }
 
-function localDependencies(): Dependencies {
+function localDependencies(): PersistenceDependencies {
   const memories = new LocalMemoryRepository();
   return {
     companies: new LocalCompanyRepository(),
@@ -85,13 +86,12 @@ function localDependencies(): Dependencies {
     memories,
     memberships: new LocalMembershipRepository(),
     index: new RepositoryKnowledgeIndex(memories),
-    model: new FixtureModelGateway(),
     sources: new LocalSourceRepository(),
     imports: new LocalImportRepository(),
   };
 }
 
-function awsDependencies(): Dependencies {
+function awsDependencies(): PersistenceDependencies {
   if (env.APP_MODE !== "aws") throw new Error("CONFIGURATION_ERROR");
   const sdkConfig = awsSdkConfig(configuredAwsRegion());
   const documentClient = DynamoDBDocumentClient.from(new DynamoDBClient(sdkConfig), {
@@ -107,18 +107,32 @@ function awsDependencies(): Dependencies {
     memories: dynamo,
     memberships: dynamo,
     sources: new S3SourceRepository(new S3Client(sdkConfig), env.S3_BUCKET_NAME),
-    index: new BedrockKnowledgeIndex(
-      new BedrockAgentClient(sdkConfig),
-      new BedrockAgentRuntimeClient(sdkConfig),
-      env.BEDROCK_KNOWLEDGE_BASE_ID,
-      env.BEDROCK_DATA_SOURCE_ID,
-    ),
-    model: new BedrockModelGateway(new BedrockRuntimeClient(sdkConfig), env.BEDROCK_MODEL_ID),
+    index: new RepositoryKnowledgeIndex(dynamo),
     imports: new DynamoImportRepository(documentClient, env.DYNAMODB_TABLE_NAME),
   };
 }
 
-const dependencies = env.APP_MODE === "aws" ? awsDependencies() : localDependencies();
+const persistence = env.APP_MODE === "aws" ? awsDependencies() : localDependencies();
+
+function modelGateway(): ModelGateway {
+  if (env.MODEL_PROVIDER === "fixture") return new FixtureModelGateway();
+  if (!env.OPENAI_API_KEY) throw appError("CONFIGURATION_ERROR");
+  const client = new OpenAI({
+    apiKey: env.OPENAI_API_KEY,
+    maxRetries: 0,
+    timeout: 25_000,
+  });
+  return new OpenAIModelGateway(client, async (companyId) => {
+    const company = await persistence.companies.get(companyId);
+    if (!company) throw appError("NOT_FOUND");
+    return {
+      tier: company.assistantModelTier,
+      modelId: modelIdForTier(company.assistantModelTier),
+    };
+  });
+}
+
+const dependencies: Dependencies = { ...persistence, model: modelGateway() };
 const sourceImporter = env.APP_MODE === "aws"
   ? new S3SourceImporter(dependencies.sources)
   : new LocalSourceImporter(dependencies.sources);

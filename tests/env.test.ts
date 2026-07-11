@@ -8,6 +8,7 @@ describe("parseEnvironment", () => {
       AUTH_MODE: "demo",
       DEMO_COMPANY_ID: "demo-salon",
       NEXT_PUBLIC_DEMO_MODE: "true",
+      MODEL_PROVIDER: "fixture",
       WAITLIST_STORAGE_MODE: "local",
     });
   });
@@ -32,17 +33,34 @@ describe("parseEnvironment", () => {
     expect(() => parseEnvironment({ APP_MODE: "unsupported" })).toThrow();
   });
 
-  it("requires every AWS resource identifier in AWS mode", () => {
+  it("requires durable storage and OpenAI configuration in AWS mode", () => {
     expect(() => parseEnvironment({ APP_MODE: "aws" })).toThrow();
     expect(parseEnvironment({
       APP_MODE: "aws",
+      MODEL_PROVIDER: "openai",
+      OPENAI_API_KEY: "sk-proj-example-only-not-a-real-key",
       MLC_AWS_REGION: "us-east-1",
-      BEDROCK_MODEL_ID: "amazon.nova-lite-v1:0",
-      BEDROCK_KNOWLEDGE_BASE_ID: "kb-id",
-      BEDROCK_DATA_SOURCE_ID: "source-id",
       DYNAMODB_TABLE_NAME: "mlc-demo",
       S3_BUCKET_NAME: "mlc-demo-bucket",
-    })).toMatchObject({ APP_MODE: "aws", MLC_AWS_REGION: "us-east-1" });
+    })).toMatchObject({
+      APP_MODE: "aws",
+      MODEL_PROVIDER: "openai",
+      MLC_AWS_REGION: "us-east-1",
+    });
+  });
+
+  it("requires a usable key only when OpenAI is selected", () => {
+    expect(() => parseEnvironment({ MODEL_PROVIDER: "openai" })).toThrow();
+    expect(parseEnvironment({
+      MODEL_PROVIDER: "openai",
+      OPENAI_API_KEY: "sk-proj-example-only-not-a-real-key",
+    })).toMatchObject({
+      APP_MODE: "local",
+      MODEL_PROVIDER: "openai",
+      OPENAI_MODEL_FAST: "gpt-5.6-luna",
+      OPENAI_MODEL_BALANCED: "gpt-5.6-terra",
+      OPENAI_MODEL_BEST: "gpt-5.6-sol",
+    });
   });
 
   it("requires app-specific AWS credentials as a complete pair", () => {

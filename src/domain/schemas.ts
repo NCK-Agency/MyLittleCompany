@@ -9,6 +9,7 @@ export const companyRoleSchema = z.enum([
   "FRONT_DESK",
   "EMPLOYEE",
 ]);
+export const assistantModelTierSchema = z.enum(["FAST", "BALANCED", "BEST"]);
 export const memoryTypeSchema = z.enum([
   "COMPANY_FACT",
   "CUSTOMER_INSIGHT",
@@ -167,6 +168,7 @@ export const companySchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).max(120),
   description: z.string().min(1).max(2000),
+  assistantModelTier: assistantModelTierSchema.default("BALANCED"),
   productsOrServices: z.array(z.string().min(1).max(200)).max(50),
   primaryCustomers: z.array(z.string().min(1).max(200)).max(50),
   differentiators: z.array(z.string().min(1).max(300)).max(50),
@@ -176,6 +178,9 @@ export const companySchema = z.object({
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
+export const updateAssistantSettingsSchema = z.object({
+  modelTier: assistantModelTierSchema,
+}).strict();
 export const conversationSchema = z.object({
   id: z.string().min(1),
   companyId: z.string().min(1),
@@ -186,6 +191,47 @@ export const conversationSchema = z.object({
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
+export const sopDraftSchema = z.object({
+  title: z.string().min(3).max(160),
+  purpose: z.string().min(3).max(1000),
+  ownerRole: z.string().min(1).max(80),
+  trigger: z.string().min(1).max(500),
+  prerequisites: z.array(z.string().min(1).max(500)).max(20),
+  steps: z.array(z.object({
+    order: z.number().int().positive(),
+    action: z.string().min(1).max(1000),
+    ownerRole: z.string().min(1).max(80),
+    expectedResult: z.string().min(1).max(500),
+  })).min(1).max(30),
+  qualityChecks: z.array(z.string().min(1).max(500)).max(20),
+  exceptions: z.array(z.string().min(1).max(500)).max(20),
+  escalation: z.array(z.string().min(1).max(500)).max(20),
+  inputs: z.array(z.string().min(1).max(300)).max(20),
+  outputs: z.array(z.string().min(1).max(300)).max(20),
+  assumptions: z.array(z.string().min(1).max(500)).max(20),
+  sourceMemories: z.array(z.object({ memoryId: z.string(), version: z.number().int().positive() })).max(20),
+});
+const modelOperationMetadataSchema = z.object({
+  modelId: z.string().min(1),
+  promptVersion: z.string().min(1),
+  latencyMs: z.number().nonnegative(),
+  inputTokens: z.number().int().nonnegative().optional(),
+  outputTokens: z.number().int().nonnegative().optional(),
+  providerRequestId: z.string().min(1).optional(),
+});
+const storedSopDraftSchema = sopDraftSchema.extend({
+  metadata: modelOperationMetadataSchema.optional(),
+});
+const groundedAnswerSchema = z.object({
+  answer: z.string().min(1).max(20_000),
+  groundingStatus: z.enum(["GROUNDED", "NO_APPROVED_CONTEXT", "CONFLICTING_CONTEXT"]),
+  sourceMemories: z.array(z.object({
+    memoryId: z.string().min(1),
+    version: z.number().int().positive(),
+    title: z.string().min(1),
+    approvedAt: z.iso.datetime(),
+  })).max(50),
+});
 export const messageSchema = z.object({
   id: z.string().min(1),
   companyId: z.string().min(1),
@@ -194,6 +240,8 @@ export const messageSchema = z.object({
   actorId: z.string().min(1).optional(),
   content: z.string().max(20_000),
   sourceRefs: z.array(sourceReferenceSchema).max(50),
+  sop: storedSopDraftSchema.optional(),
+  groundedAnswer: groundedAnswerSchema.optional(),
   createdAt: z.iso.datetime(),
 });
 export const candidateSchema = z.object({
@@ -259,27 +307,6 @@ export const memoryVersionSchema = z.object({
   originatingCandidateId: z.string().optional(),
   createdAt: z.iso.datetime(),
 });
-export const sopDraftSchema = z.object({
-  title: z.string().min(3).max(160),
-  purpose: z.string().min(3).max(1000),
-  ownerRole: z.string().min(1).max(80),
-  trigger: z.string().min(1).max(500),
-  prerequisites: z.array(z.string().min(1).max(500)).max(20),
-  steps: z.array(z.object({
-    order: z.number().int().positive(),
-    action: z.string().min(1).max(1000),
-    ownerRole: z.string().min(1).max(80),
-    expectedResult: z.string().min(1).max(500),
-  })).min(1).max(30),
-  qualityChecks: z.array(z.string().min(1).max(500)).max(20),
-  exceptions: z.array(z.string().min(1).max(500)).max(20),
-  escalation: z.array(z.string().min(1).max(500)).max(20),
-  inputs: z.array(z.string().min(1).max(300)).max(20),
-  outputs: z.array(z.string().min(1).max(300)).max(20),
-  assumptions: z.array(z.string().min(1).max(500)).max(20),
-  sourceMemories: z.array(z.object({ memoryId: z.string(), version: z.number().int().positive() })).max(20),
-});
-
 export const sendMessageSchema = z.object({
   content: z.string().trim().min(1).max(4000),
   idempotencyKey: z.string().min(8).max(128),

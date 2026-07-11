@@ -1,319 +1,206 @@
-# AWS Setup Guide
+# AWS persistence and identity setup
 
-This guide creates the resources expected by the implemented AWS adapters. For
-the filmed demo, use the existing private source bucket and 1024-dimension S3
-Vectors index instead of creating replacements.
+AWS remains the durable hosting layer for structured company data, private
+sources, and invited-user identity. Model generation uses OpenAI and approved
+knowledge retrieval reads the structured repository directly. No AWS model,
+embedding, vector index, or remote search resource is required.
 
-## 1. Choose one AWS Region
+## 1. Choose one Region
 
-Use `us-east-1` for the demo. In **Amazon Bedrock → Model catalog**, open
-**Amazon Nova Lite**, enable access if the account requires it, and verify one
-request in the Converse playground before configuring the app.
-
-```text
-AWS_REGION=us-east-1
-```
-
-Keep model selection configurable:
+Use one Region for DynamoDB, S3, Cognito, and the application runtime. The demo
+currently uses:
 
 ```text
-BEDROCK_MODEL_ID=amazon.nova-lite-v1:0
-BEDROCK_EMBEDDING_MODEL_ID=amazon.titan-embed-text-v2:0
+MLC_AWS_REGION=us-east-1
 ```
-
-Do not assume a model is available in every Region or account. Verify it in the Bedrock console before debugging application code.
 
 ## 2. DynamoDB table
 
-In **DynamoDB → Tables → Create table**, create one table with:
+Create one on-demand table with:
 
-- Partition key: `PK` as String.
-- Sort key: `SK` as String.
-- Billing mode: on-demand for the hackathon.
-- Point-in-time recovery if convenient.
-- GSI named `GSI1`:
-  - Partition key: `GSI1PK` as String.
-  - Sort key: `GSI1SK` as String.
+- Partition key `PK` as String.
+- Sort key `SK` as String.
+- GSI named `GSI1` with String keys `GSI1PK` and `GSI1SK`.
+- TTL enabled on the `ttl` attribute.
+- Point-in-time recovery when available.
 
 Set:
 
 ```text
-DYNAMODB_TABLE_NAME=
+DYNAMODB_TABLE_NAME=<table-name>
 ```
 
-The application should use condition expressions for candidate edits, approval transitions, and index-status updates.
+The company profile stores the provider-neutral assistant tier. Existing, new,
+and reset companies default to `BALANCED`. Conditional writes protect candidate
+edits, approval transitions, owner settings changes, and idempotent waitlist
+submissions.
 
-Enable DynamoDB TTL on the `ttl` attribute. The AWS demo bootstrap is
-idempotent and must run before the Cognito owner bootstrap:
+Bootstrap only the demo profile and seeded memberships when absent:
 
 ```bash
 pnpm bootstrap:aws-demo
 BOOTSTRAP_OWNER_EMAIL=owner@example.com pnpm bootstrap:cognito
 ```
 
-`bootstrap:aws-demo` writes only the demo company profile and seeded demo
-memberships when absent. It does not write, replace, or delete approved
-knowledge.
+The bootstrap must not replace or delete approved knowledge.
 
-## 3. S3 bucket
+## 3. Private S3 bucket
 
-In **S3 → Create bucket**, create a private bucket for sources, canonical memory
-documents, and generated artifacts.
+Create one private encrypted bucket for sources, imported content, canonical
+memory documents, and artifacts.
 
 Required configuration:
 
 - Block all public access.
-- Server-side encryption.
-- CORS only if the chosen upload flow truly needs direct browser upload.
-- Lifecycle rules are optional for the demo.
+- Enable server-side encryption.
+- Avoid browser CORS unless a reviewed direct-upload flow actually needs it.
+- Keep every object company-prefixed below the application prefix.
 
 Set:
 
 ```text
-S3_BUCKET_NAME=
+S3_BUCKET_NAME=<bucket-name>
 ```
 
-Create or reserve these prefixes:
+Reserve these prefixes:
 
 ```text
 sources/
+imports/
 memories/
 artifacts/
 ```
 
-## 4. Bedrock model access
+The `memories/` objects are provenance/export copies. Repository-backed
+retrieval does not scan or ingest S3 content.
 
-The runtime role needs model-inference permission for the selected model or inference profile. The minimum common action for non-streaming Converse or InvokeModel usage is:
-
-```text
-bedrock:InvokeModel
-```
-
-Add streaming or inference-profile permissions only when used by the implementation.
-
-Optional Guardrail configuration:
-
-```text
-BEDROCK_GUARDRAIL_ID=
-BEDROCK_GUARDRAIL_VERSION=
-```
-
-If a Guardrail is used, grant only the required Guardrail actions and resources.
-
-## 5. Bedrock Knowledge Base
-
-If the developer role is denied IAM or Knowledge Base creation, use the exact
-least-privilege handoff in `docs/AWS_ADMIN_HANDOFF.md`. Do not widen the
-developer role.
-
-In **Amazon Bedrock → Knowledge Bases**, create a vector Knowledge Base:
-
-1. Choose the S3 data-source path.
-2. Select Titan Text Embeddings V2 (`amazon.titan-embed-text-v2:0`).
-3. Select the existing S3 Vectors bucket and 1024-dimension index. Do not create
-   a second index for the demo.
-4. Add the existing private bucket as the data source and restrict its inclusion prefix
-   to `memories/`.
-5. Set chunking to **No chunking**. Canonical memory documents are already
-   small, structured, and independently versioned. This choice is part of data
-   source creation and should be treated as irreversible; replace the data
-   source if the strategy must change.
-6. Save both the Knowledge Base ID and data source ID.
-7. Confirm the data source supports direct document ingestion.
-
-Set:
-
-```text
-BEDROCK_KNOWLEDGE_BASE_ID=
-BEDROCK_DATA_SOURCE_ID=
-```
-
-The application path should use:
-
-- `Retrieve` for retrieval.
-- `IngestKnowledgeBaseDocuments` for direct ingestion of approved memory documents.
-- Stable S3 objects at `memories/{companyId}/{memoryId}/v{version}.md`.
-
-The AWS documentation lists these direct-ingestion actions:
-
-```text
-bedrock:StartIngestionJob
-bedrock:IngestKnowledgeBaseDocuments
-bedrock:GetKnowledgeBaseDocuments
-bedrock:ListKnowledgeBaseDocuments
-bedrock:DeleteKnowledgeBaseDocuments
-```
-
-The runtime only needs the subset the implementation actually calls. For retrieval, grant:
-
-```text
-bedrock:Retrieve
-```
-
-Scope Bedrock permissions to the configured Knowledge Base and model resources whenever the service supports that scope.
-
-## 6. Cognito managed login
-
-Create a user pool app client with a secret, authorization-code grant, `openid
-email profile` scopes, the Auth.js callback URL
-`/api/auth/callback/cognito`, and the configured post-logout URL. Configure the
-pool to use email as the sign-in alias and create a managed-login domain.
-
-Disable self-service sign-up in the user pool by selecting administrator-only
-account creation. The managed login must not offer public registration. New
-identities are created only when an owner invites someone through People & access;
-public visitors use `/waitlist` instead.
-
-The runtime role needs `cognito-idp:AdminGetUser` and
-`cognito-idp:AdminCreateUser` on this user pool for owner invitations. Configure
-the `COGNITO_*`, `AUTH_URL`, and `AUTH_SECRET` values from `.env.example`, then run:
-
-```bash
-pnpm bootstrap:aws-demo
-BOOTSTRAP_OWNER_EMAIL=owner@example.com pnpm bootstrap:cognito
-```
-
-This idempotently creates or reuses the first Cognito identity and writes its
-owner membership. The command fails before touching Cognito if the company
-profile is missing. Ownership is never inferred from an untrusted browser claim.
-
-### Cognito smoke path
-
-1. Open `/login` and confirm it offers the Cognito secure-sign-in handoff with no
-   public Create account or Sign up action. `/login-demo` remains the separate
-   credential-free local picker and is not used for this smoke path.
-2. Open `/waitlist`, submit an email twice, and confirm both requests show the same success message and one DynamoDB waitlist item exists.
-3. Continue to Cognito and complete the owner's temporary-password change.
-4. Open **People & access**, invite a second email, and grant one department `READ`.
-5. Sign out and confirm Cognito returns to the configured application logout URL.
-6. Sign in as the invited user and confirm first login activates the membership.
-7. Verify company knowledge and the granted department are readable while a sibling department and Review are denied.
-8. As owner, add or remove a grant and confirm the next request reflects it without a new login.
-9. Pause the membership and confirm authentication completes but the app shows the no-access state.
-10. Restore access and confirm the member can use the permitted scope again.
-
-## 7. Suggested application-role capabilities
-
-Create a dedicated hackathon runtime IAM user. Do not reuse an administrator.
-Attach a least-privilege policy limited to the selected model or inference
-profile, table and GSI, bucket prefixes, Knowledge Base, and data source. The
-implemented runtime uses only the actions below.
-
-### Bedrock
-
-- Invoke the configured model.
-- Retrieve from the configured Knowledge Base.
-- Directly ingest, inspect, and delete documents only as required.
-- Apply the configured Guardrail only when enabled.
-
-### DynamoDB
-
-- `GetItem`
-- `PutItem`
-- `UpdateItem`
-- `DeleteItem` for demo reset and controlled cleanup
-- `Query`
-- `TransactWriteItems`
-- Access to the configured table and `GSI1`
-
-Avoid runtime `Scan` for product flows. A tightly constrained scan may be acceptable only for a disposable demo-reset script if no better key pattern exists.
-
-### S3
-
-- `GetObject`
-- `PutObject`
-- `DeleteObject` for reset and cleanup
-- `ListBucket` is not required by the current runtime.
-
-Limit access to the configured bucket and company prefixes where the deployment model permits it.
-
-Configure S3 Lifecycle rules for imported raw sources using the tags written by
-the application:
+Configure Lifecycle rules for imported raw sources using the tags written by the
+application:
 
 - `retention=zero-candidate-24-hours`: expire after one day.
 - `retention=all-ignored-7-days`: expire after seven days.
 - `retention=unapproved-30-days`: expire after 30 days.
 - `retention=approved`: do not expire automatically.
 
-The application also stores the exact `deleteAfter` timestamp as source metadata.
-Owner deletion replaces the object with a metadata-only tombstone; it does not
-remove the citation checksum or source label.
+Owner deletion leaves the metadata-only citation tombstone required for audit.
 
-## 8. Deployment environment
+## 4. Cognito managed login
 
-For a Netlify deployment:
+Create a user pool app client with a secret, authorization-code grant,
+`openid email profile` scopes, Auth.js callback
+`/api/auth/callback/cognito`, and the configured post-logout URL. Use email as
+the sign-in alias and create a managed-login domain.
 
-- Store AWS and vendor configuration as server-side environment variables.
-- Create one access key for the dedicated hackathon IAM user.
-- Keep credentials only in a local AWS profile and Netlify secret variables with
-  Functions scope. Never place them in `.env.example`, `netlify.toml`, or Git.
-- Never prefix secrets with `NEXT_PUBLIC_`.
-- Verify that AWS SDK code executes only in server routes or server actions.
+Disable self-service sign-up. Owners invite people through People & access;
+public visitors use the waitlist. The runtime identity needs only
+`cognito-idp:AdminGetUser` and `cognito-idp:AdminCreateUser` on this user pool for
+that invitation flow.
 
-Rotate or delete the access key and IAM user immediately after the demo. For an
-AWS-native deployment, use the compute service's IAM role instead of long-lived
-access keys.
+Configure the `COGNITO_*`, `AUTH_URL`, and `AUTH_SECRET` values from
+`.env.example`, then run the bootstrap commands above. Ownership comes from the
+application membership record, never an identity-provider claim.
 
-## 9. Knowledge Base smoke test
+### Cognito acceptance path
 
-Run `pnpm smoke:aws`. It performs these checks:
+1. Open `/login`; confirm it hands invited users to managed login and offers no
+   public sign-up. `/login-demo` remains a separate labelled seeded-account path.
+2. Submit the same waitlist email twice and confirm one DynamoDB entry and the
+   same public success response.
+3. Complete the owner's first sign-in and temporary-password change.
+4. Invite a second person and grant one department `READ`.
+5. Confirm first login activates that membership.
+6. Confirm the granted company/department knowledge is readable while a sibling
+   department and Review remain denied.
+7. Change or pause access and confirm the next request reflects it without a new
+   login.
 
-1. Validate required environment variables.
-2. Invoke Nova Lite with Converse using the configured model ID.
-3. Run the real onboarding extraction prompt and verify a bounded source-backed candidate list.
-4. Write a disposable approved-memory fixture to the structured repository.
-5. Render and ingest its canonical document.
-6. Retrieve it using the disposable company filter.
-7. Hydrate and verify the returned memory.
-8. Delete only its unique Knowledge Base document, S3 object, and DynamoDB items.
-9. Return non-zero on any failed check.
+## 5. Runtime IAM capabilities
 
-Every smoke company ID starts with `smoke-` and a UUID. The script never queries
-or deletes an existing company partition.
+Create a dedicated Netlify runtime identity. Do not reuse an administrator or
+the AWS root identity.
 
-## 10. Common failure classification
+### DynamoDB
 
-Map provider errors into safe internal codes:
+- `GetItem`
+- `PutItem`
+- `UpdateItem`
+- `DeleteItem` for scoped demo reset and controlled cleanup
+- `Query`
+- `TransactWriteItems`
+- Access only to the configured table and `GSI1`
 
-| Provider symptom | Internal code |
+Avoid runtime `Scan`. Every business-data key remains company-prefixed.
+
+### S3
+
+- `GetObject`
+- `PutObject`
+- `PutObjectTagging`
+- `DeleteObject` for scoped reset, retention, and cleanup
+- Access only to the configured private bucket prefixes
+
+The current runtime does not need `ListBucket` for normal product flows.
+
+### Cognito
+
+- `cognito-idp:AdminGetUser`
+- `cognito-idp:AdminCreateUser`
+- Access only to the configured user pool
+
+There are no model-inference, embedding, vector, or managed-search permissions
+in the active AWS runtime policy.
+
+## 6. OpenAI server configuration
+
+OpenAI is not an AWS credential. Store these values separately as Netlify
+Functions runtime configuration:
+
+```text
+MODEL_PROVIDER=openai
+OPENAI_API_KEY=<secret>
+OPENAI_MODEL_FAST=gpt-5.6-luna
+OPENAI_MODEL_BALANCED=gpt-5.6-terra
+OPENAI_MODEL_BEST=gpt-5.6-sol
+```
+
+Never prefix them with `NEXT_PUBLIC_`, include them in IAM policies, or accept a
+model ID from the browser. See `docs/NETLIFY_DEPLOY.md` for the complete hosted
+environment and live smoke gate.
+
+## 7. Deployment credential handling
+
+- Put AWS credentials and `OPENAI_API_KEY` only in local ignored configuration
+  or non-readable Netlify Functions secrets.
+- Netlify reserves standard AWS credential names; use the application-specific
+  `MLC_AWS_ACCESS_KEY_ID` and `MLC_AWS_SECRET_ACCESS_KEY` variables.
+- Do not place secrets in `.env.example`, `netlify.toml`, Git, logs, or chat.
+- Rotate or delete a demo IAM access key immediately after the presentation.
+- Prefer an attached IAM role over long-lived access keys on an AWS-native host.
+
+## 8. Safe failure classification
+
+| Symptom | Internal code |
 |---|---|
-| Model permission or access failure | `MODEL_UNAVAILABLE` |
-| Model returns invalid structured output | `MODEL_OUTPUT_INVALID` |
-| Knowledge Base retrieval denied or unavailable | `KNOWLEDGE_RETRIEVAL_FAILED` |
-| Direct ingestion fails | `MEMORY_INDEX_FAILED` |
+| Selected OpenAI model unavailable or unauthorized | `MODEL_UNAVAILABLE` |
+| OpenAI timeout or rate limit | `PROVIDER_TIMEOUT` or `RATE_LIMITED` |
+| OpenAI structured output fails validation and repair | `MODEL_OUTPUT_INVALID` |
+| Repository search update fails | `INDEX_FAILED` state/code |
 | DynamoDB conditional write fails | `STALE_WRITE` or `CONFLICT` |
-| S3 write fails | `SOURCE_STORAGE_FAILED` |
+| Other S3, DynamoDB, or Cognito provider failure | safe `INTERNAL_ERROR` response |
 
-Log provider request IDs server-side, but do not expose raw stack traces or credentials to users.
+Log safe provider request IDs server-side when available, but never expose raw
+response bodies, stack traces, headers, or credentials to users.
 
-## 11. AWS setup completion checklist
+## 9. Completion checklist
 
-- [ ] Selected model can be invoked in the chosen Region.
-- [ ] DynamoDB table and `GSI1` exist.
-- [ ] DynamoDB TTL is enabled on `ttl`.
-- [ ] S3 bucket is private.
-- [ ] Knowledge Base and data source exist.
-- [ ] Direct ingestion succeeds from a test script.
-- [ ] Retrieval returns the test document.
-- [ ] Application role is least privilege.
-- [ ] `.env.local` is ignored by Git.
-- [ ] `pnpm smoke:aws` passes.
-- [ ] The salon end-to-end flow passes in AWS mode.
-- [ ] Cognito callback and logout URLs match the deployed `AUTH_URL`.
-- [ ] `pnpm bootstrap:cognito` creates or finds the immutable first owner.
-- [ ] `pnpm bootstrap:aws-demo` reports only created/existing profile and
-  membership records and leaves approved knowledge unchanged.
-- [ ] An owner invitation reaches the recipient and first login activates access.
-- [ ] `APP_BASE_URL` is the deployed HTTPS origin and `MCP_ENABLED=true` only
-  after OAuth discovery and callback checks pass.
-- [ ] `MCP_OAUTH_PRIVATE_JWK` contains a deployment secret RSA private JWK and
-  `/oauth/jwks` exposes only its public fields.
-- [ ] DynamoDB TTL is enabled on the `ttl` attribute for OAuth cleanup.
-- [ ] ChatGPT Developer Mode completes search/fetch and creates a Review-only
-  suggestion; Codex, Claude Code, Gemini CLI, and Kiro connect to the same `/mcp`
-  resource through their hosted or loopback OAuth callbacks.
-
-Use `docs/MCP_CONNECT.md` for the exact client and persona smoke sequence.
-
-After the smoke test passes, run `pnpm test:e2e:aws`. It starts the same Next.js
-application with `APP_MODE=aws` and executes the salon story serially.
+- [ ] DynamoDB table and `GSI1` exist; TTL is enabled on `ttl`.
+- [ ] Private encrypted S3 bucket and source-retention rules exist.
+- [ ] Runtime IAM policy is limited to DynamoDB, the S3 prefixes, and the Cognito pool.
+- [ ] Cognito callback/logout URLs match the deployed `AUTH_URL`; self-sign-up is disabled.
+- [ ] `pnpm bootstrap:aws-demo` leaves approved knowledge unchanged.
+- [ ] `pnpm bootstrap:cognito` creates or finds the first owner membership.
+- [ ] `.env.local` is ignored and no secret enters the browser bundle.
+- [ ] `pnpm smoke:openai` passes all configured tiers.
+- [ ] The hosted Balanced salon flow persists through a reload in `APP_MODE=aws`.
+- [ ] Assistant settings rejects non-owners and arbitrary model IDs.
+- [ ] `MCP_ENABLED=false` remains until the separate connector acceptance work begins.

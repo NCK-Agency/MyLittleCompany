@@ -1,7 +1,7 @@
 # Decision Log
 
 **Canonical decision record**
-**Last consolidated:** 2026-07-11
+**Last consolidated:** 2026-07-12
 
 Use this file for durable product, trust, experience, architecture, deployment,
 and scope decisions. Add a dated ADR when a material choice changes. Do not edit
@@ -17,23 +17,23 @@ an old decision to hide a reversal: mark it superseded and add the replacing ADR
 | ADR-004 | Preserve rationale, source, approver, scope, time, and version | Trust |
 | ADR-005 | The MVP uses Marketing, Operations, and Employee experiences | Scope |
 | ADR-006 | Domain services use local/AWS ports and adapters | Architecture |
-| ADR-007 | DynamoDB is structured truth; the Knowledge Base is derived | Architecture |
-| ADR-008 | Approved versions are rendered to S3 and directly ingested | Architecture |
+| ADR-007 | Superseded: DynamoDB truth with Bedrock Knowledge Base discovery | Architecture |
+| ADR-008 | Superseded in part: S3 copies remain; Bedrock ingestion is removed | Architecture |
 | ADR-009 | Model choice remains environment configuration | AI |
 | ADR-010 | Website imports are optional, untrusted sources | Integrations |
 | ADR-011 | Implement one primary observability approach first | Operations |
 | ADR-012 | Demo authentication may be simple; server authorization may not | Security |
 | ADR-013 | Use webpack for verified production builds for now | Build |
-| ADR-014 | Runtime mode selects one complete local or AWS dependency set | Architecture |
+| ADR-014 | Superseded: runtime mode selected one complete local or AWS dependency set | Architecture |
 | ADR-015 | assistant-ui supplies chat mechanics; MLC owns data and actions | Experience |
 | ADR-016 | The Company Playbook is directly editable and versioned | Product |
 | ADR-017 | Use the bold blue kinetic-editorial identity | Design |
 | ADR-018 | The public entry page leads with the product promise | Product story |
-| ADR-019 | Netlify may host the app; AWS remains the durable AI/data core | Deployment |
+| ADR-019 | Superseded in part: Netlify and AWS data remain; AWS AI does not | Deployment |
 | ADR-020 | The pitch hands off to live product proof within 90 seconds | Demo |
 | ADR-021 | External tools never become authoritative company truth | Integrations |
 | ADR-022 | Customer-facing copy uses the full product name | Brand language |
-| ADR-023 | Use a console-first, configurable AWS demo foundation | Deployment |
+| ADR-023 | Superseded: use a console-first, configurable AWS demo foundation | Deployment |
 | ADR-024 | Use one scoped knowledge hierarchy with persistent conversation history | Product architecture |
 | ADR-025 | Use webpack for both verified development and production rendering | Build |
 | ADR-026 | Add topic views and in-chat context without making documents primary | Product experience |
@@ -45,9 +45,10 @@ an old decision to hide a reversal: mark it superseded and add the replacing ADR
 | ADR-032 | Superseded: remove Bedrock and make the complete demo local-first | Architecture |
 | ADR-033 | Keep the public landing page business-neutral | Product story |
 | ADR-034 | Separate Cognito company sign-in from seeded demo access | Access experience |
-| ADR-035 | Restore the hosted AWS and private ChatGPT demo path | Deployment |
+| ADR-035 | Superseded: restore the hosted AWS and private ChatGPT demo path | Deployment |
 | ADR-036 | Align the public landing story with the closed waitlist | Product story |
 | ADR-037 | Keep public waitlist persistence independent from assistant runtime mode | Deployment |
+| ADR-038 | Use OpenAI live generation, repository retrieval, and owner model tiers | Architecture |
 
 ## Standing boundaries
 
@@ -59,12 +60,14 @@ MVP work unless a new ADR explicitly supersedes them:
   demonstration vertical, not a permanent product limitation.
 - Primary navigation: **Home, Chat, Review, Playbook**.
 - Required implementation baseline: strict TypeScript, Next.js App Router,
-  React, Tailwind CSS, pnpm, Zod, deterministic fallback behavior, and the
-  complete AWS adapter set for the hosted demo: Bedrock, Bedrock Knowledge
-  Bases, DynamoDB, S3, and Cognito.
+  React, Tailwind CSS, pnpm, Zod, OpenAI Responses API generation,
+  repository-backed approved-memory retrieval, and durable DynamoDB, private S3,
+  and Cognito adapters for the hosted demo. Fixture behavior is explicit test or
+  labelled offline configuration, never a silent fallback.
 - The core proof is the complete governed-memory loop, not feature breadth.
-- Real AWS and Cognito smoke validation remains pending until the deployment
-  resources and external accounts are available.
+- Live OpenAI three-tier smoke validation and one hosted Balanced salon journey
+  are required before the web demo is called ready. Private ChatGPT acceptance
+  follows separately.
 - Voice, broad integration catalogs, billing, marketplaces, mobile apps, and
   additional assistants remain deferred.
 
@@ -76,8 +79,8 @@ source of truth.
 
 | Surface | Accepted purpose | Primary action or boundary |
 |---|---|---|
-| `/` | Public statement-led landing page | Explain the promise and trust loop with company-neutral proof; start a Marketing project |
-| `/workspace` | Demo-company home and controls | Edit the company profile, inspect recent knowledge, and reset demo state |
+| `/` | Public statement-led landing page | Explain the promise and trust loop with company-neutral proof; join the waitlist |
+| `/workspace` | Demo-company home and controls | Edit the company profile, choose the owner-only assistant tier, inspect recent knowledge, and reset demo state |
 | `/chat` | Marketing, Operations, and Employee work | Work naturally while approved context and suggestions remain visible |
 | `/review` | Human approval inbox | Approve, edit, or ignore suggested company knowledge |
 | `/playbook` | Current approved company truth | Browse, source-check, and explicitly version approved knowledge |
@@ -127,21 +130,21 @@ not belong on the MVP landing page.
 
 ## ADR-006 — Local-first ports and adapters
 
-**Status:** Accepted; AWS competition requirement superseded by ADR-032
+**Status:** Accepted for provider-neutral ports; Bedrock portions superseded by ADR-038
 **Decision:** Domain and application services depend on interfaces with local and AWS adapters.  
 **Reason:** Product development and testing must not be blocked by cloud setup, while the submitted path still uses AWS.  
 **Consequence:** AWS SDK imports are confined to adapters.
 
 ## ADR-007 — DynamoDB is structured truth; Knowledge Base is a derived index
 
-**Status:** Superseded by ADR-032
+**Status:** Superseded by ADR-038
 **Decision:** Persist canonical structured memory and version state in DynamoDB. Use Bedrock Knowledge Bases as retrieval infrastructure.  
 **Reason:** Search indexes can be stale or fail independently; approval and version truth require deterministic records.  
 **Consequence:** Index hits are hydrated and verified before use.
 
 ## ADR-008 — Direct ingestion after approval
 
-**Status:** Superseded by ADR-032
+**Status:** S3 provenance retained; Bedrock ingestion superseded by ADR-038
 **Decision:** Render each approved memory version and directly ingest it into the configured Bedrock Knowledge Base, while keeping a canonical S3 copy.  
 **Reason:** Approved knowledge should become searchable without a full source sync.  
 **Consequence:** Approval and indexing use separate statuses and idempotent retry.
@@ -186,7 +189,7 @@ not belong on the MVP landing page.
 
 ## ADR-014 — Ship one complete AWS dependency set
 
-**Status:** Superseded by ADR-032
+**Status:** Superseded by ADR-038
 
 **Decision:** `APP_MODE` selects either the complete credential-free local adapter
 set or the complete Bedrock, DynamoDB, S3, and Knowledge Base adapter set once in
@@ -331,7 +334,7 @@ Marketing-demo link.
 
 ## ADR-019 — Netlify may host the app; AWS remains the durable core
 
-**Status:** Superseded by ADR-032
+**Status:** Netlify and AWS persistence retained; AWS intelligence superseded by ADR-038
 
 **Decision:** Use repository-controlled Netlify deployment for the Next.js web
 application when convenient, while Amazon Bedrock, DynamoDB, S3, and Bedrock
@@ -392,7 +395,7 @@ unchanged.
 
 ## ADR-023 — Use a console-first, configurable AWS demo foundation
 
-**Status:** Superseded by ADR-032
+**Status:** Superseded by ADR-038
 **Date:** 2026-07-11
 
 **Decision:** Provision the hackathon AWS foundation through the console in
@@ -551,7 +554,7 @@ The Company profile, company/department hierarchy, seven memory types, and five 
 
 ## ADR-030 — Pool AWS resources with tenant-prefixed business partitions
 
-**Status:** Accepted for optional persistence; Bedrock portions superseded by ADR-032
+**Status:** Accepted for persistence; Bedrock portions superseded by ADR-038
 **Date:** 2026-07-11
 
 **Decision:** Use one pooled DynamoDB table, private S3 bucket, and Bedrock
@@ -676,7 +679,7 @@ identity claims.
 
 ## ADR-035 — Restore the hosted AWS and private ChatGPT demo path
 
-**Status:** Accepted
+**Status:** Superseded by ADR-038
 **Date:** 2026-07-11
 
 **Decision:** Restore real Amazon Bedrock generation, Bedrock Knowledge Base
@@ -745,3 +748,46 @@ assistant runtime is using deterministic local behavior.
 mixing AWS-backed company truth into local/demo assistant behavior. Public
 functions require only the configured AWS Region, waitlist table, and scoped
 credentials for this path.
+
+## ADR-038 — Use OpenAI live generation, repository retrieval, and owner model tiers
+
+**Status:** Accepted
+**Date:** 2026-07-12
+
+**Decision:** Replace the active Amazon Bedrock runtime and Knowledge Base path
+with the OpenAI Responses API for real assistant generation and
+`RepositoryKnowledgeIndex` over the active local or DynamoDB memory repository.
+Keep DynamoDB as durable structured truth, private S3 for source and canonical
+document retention, and Cognito/Auth.js for hosted identity.
+
+Select intelligence independently from persistence with
+`MODEL_PROVIDER=openai|fixture`. Hosted operation uses `openai`; fixture behavior
+is limited to automated tests and explicitly labelled offline operation. A live
+provider failure never silently switches provider, model, or fixture response.
+
+Store a provider-neutral company setting `FAST | BALANCED | BEST`, defaulting to
+`BALANCED`. Only an owner may change it in Workspace Assistant settings. The
+server maps each tier to an allowed environment-configured OpenAI model ID and
+applies a change to the next request without rewriting prior messages. Every
+model operation receives the trusted `companyId`, uses strict Structured Outputs
+where a schema exists, and remains subject to Zod, business-rule, citation, and
+human-approval checks.
+
+**Reason:** The Bedrock account has zero runtime quota for both generation and
+query embedding, so it cannot provide a working live demonstration. OpenAI can
+cover the same visible model operations with real output while repository-backed
+retrieval keeps approved company truth simple, inspectable, and independent of a
+second remote search system. Provider-neutral tiers give owners a useful choice
+without exposing model configuration complexity.
+
+**Consequence:** Remove Bedrock Runtime, Bedrock Knowledge Bases, S3 Vectors,
+their active configuration, SDKs, provisioning requirements, smoke commands, and
+release claims. Preserve their historical ADR text. ADR-035, ADR-007, ADR-014,
+and ADR-023 are superseded; the Bedrock-ingestion portion of ADR-008 and the
+Bedrock/intelligence portions of ADR-006, ADR-019, and ADR-030 are superseded.
+ADR-009 remains accepted through the provider-neutral tier mapping.
+
+The web application's complete live salon loop is the migration release gate:
+all configured tiers pass `smoke:openai`, and the hosted Balanced journey passes
+end to end. Private ChatGPT/MCP acceptance remains a later checkpoint and does
+not block this web migration.

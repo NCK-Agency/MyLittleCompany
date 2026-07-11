@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HomeDashboard } from "@/components/home-dashboard";
 import { ViewerProvider } from "@/components/viewer-context";
@@ -17,6 +17,7 @@ const company: Company = {
   id: "company-1",
   name: "Maison Lumière",
   description: "A warm neighborhood salon.",
+  assistantModelTier: "BALANCED",
   productsOrServices: [],
   primaryCustomers: [],
   differentiators: [],
@@ -120,8 +121,16 @@ const reader: ActorContext = {
 };
 
 function mockDashboardRequests(): void {
-  vi.mocked(apiRequest).mockImplementation(async (path) => {
+  vi.mocked(apiRequest).mockImplementation(async (path, init) => {
     if (path === "/api/company") return company;
+    if (path === "/api/company/assistant-settings") return {
+      modelTier: init?.method === "PATCH" ? "BEST" : "BALANCED",
+      options: [
+        { tier: "FAST", label: "Fast", description: "Quick responses.", modelId: "gpt-fast" },
+        { tier: "BALANCED", label: "Balanced", description: "Speed and quality.", modelId: "gpt-balanced" },
+        { tier: "BEST", label: "Best quality", description: "Complex work.", modelId: "gpt-best" },
+      ],
+    };
     if (path === "/api/conversations") return [conversation];
     if (path === "/api/memory-candidates") return [candidate];
     if (path === "/api/memories") return [memory];
@@ -150,6 +159,22 @@ describe("HomeDashboard", () => {
     expect(screen.getByText("Promotional discount limit")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Cancellation policy" })).toBeInTheDocument();
     expect(screen.getByText("1 approved entry available to you.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Choose how your assistant works" })).toBeInTheDocument();
+    expect(screen.getByText("OpenAI · gpt-balanced")).toBeInTheDocument();
+  });
+
+  it("lets an owner save a company-wide model tier", async () => {
+    mockDashboardRequests();
+    render(<ViewerProvider viewer={owner}><HomeDashboard /></ViewerProvider>);
+
+    fireEvent.click(await screen.findByRole("radio", { name: /Best quality/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save choice" }));
+
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(
+      "/api/company/assistant-settings",
+      { method: "PATCH", body: JSON.stringify({ modelTier: "BEST" }) },
+    ));
+    expect(await screen.findByText("Assistant choice saved. Your next request will use it.")).toBeInTheDocument();
   });
 
   it("does not request or show pending knowledge for a read-only viewer", async () => {
@@ -160,6 +185,7 @@ describe("HomeDashboard", () => {
     await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/api/memories"));
     expect(apiRequest).not.toHaveBeenCalledWith("/api/memory-candidates");
     expect(screen.queryByText("Suggested company knowledge")).not.toBeInTheDocument();
+    expect(screen.queryByText("Assistant settings")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Cancellation policy" })).toBeInTheDocument();
   });
 });

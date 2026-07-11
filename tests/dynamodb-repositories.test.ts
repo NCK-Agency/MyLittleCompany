@@ -81,6 +81,41 @@ describe("DynamoRepositories approval", () => {
 });
 
 describe("DynamoRepositories company partition isolation", () => {
+  it("reads conversation messages consistently for immediate retry replay", async () => {
+    const send = vi.fn((command: { constructor: { name: string } }) => {
+      if (command.constructor.name === "GetCommand") {
+        return Promise.resolve({ Item: {
+          PK: "COMPANY#company-a",
+          SK: "CONVERSATION#conversation-1",
+          entity: "CONVERSATION",
+          id: "conversation-1",
+          companyId: "company-a",
+          title: "Retry replay",
+          assistantRole: "OPERATIONS",
+          scope: { level: "COMPANY" },
+          createdBy: "owner",
+          createdAt: "2026-07-11T00:00:00.000Z",
+          updatedAt: "2026-07-11T00:00:00.000Z",
+        } });
+      }
+      return Promise.resolve({ Items: [] });
+    });
+    const repository = new DynamoRepositories({ send } as never, "table");
+
+    await repository.listMessages("conversation-1", "company-a");
+
+    const query = send.mock.calls.find(([command]) => command.constructor.name === "QueryCommand")?.[0] as unknown as {
+      input: Record<string, unknown>;
+    };
+    expect(query.input).toMatchObject({
+      ConsistentRead: true,
+      ExpressionAttributeValues: {
+        ":pk": "COMPANY#company-a#CONVERSATION#conversation-1",
+        ":prefix": "MESSAGE#",
+      },
+    });
+  });
+
   it("namespaces identical conversation and message IDs by company", async () => {
     const send = vi.fn().mockResolvedValue({});
     const repository = new DynamoRepositories({ send } as never, "table");

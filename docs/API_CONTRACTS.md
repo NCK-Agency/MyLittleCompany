@@ -26,8 +26,8 @@ Error:
 ```json
 {
   "error": {
-    "code": "MEMORY_INDEX_FAILED",
-    "message": "The knowledge was approved but could not be added to search.",
+    "code": "MODEL_UNAVAILABLE",
+    "message": "This assistant model is temporarily unavailable.",
     "retryable": true
   },
   "meta": {
@@ -82,9 +82,9 @@ suggest_company_knowledge({ content, idempotencyKey, scope? }):
   | { status: "PROPOSED", candidate: { id, title, statement, relation, reviewUrl } }
 ```
 
-`search` and `fetch` return approved, current, indexed records only. Suggestions
+`search` and `fetch` return approved, current, repository-searchable records only. Suggestions
 are idempotent, accept no identity or approval fields, and never become visible
-to retrieval before Review approval and successful indexing.
+to retrieval before Review approval and current-record availability.
 
 ### POST `/api/demo/reset`
 
@@ -119,6 +119,40 @@ Editable fields:
   "brandVoice": ["Warm", "Confident", "Never pushy"]
 }
 ```
+
+### GET `/api/company/assistant-settings`
+
+Owner-only. Returns the provider-neutral current choice and server-approved
+options. Model IDs are display-only in this response and cannot be submitted as
+settings.
+
+```json
+{
+  "data": {
+    "modelTier": "BALANCED",
+    "options": [
+      {
+        "tier": "FAST",
+        "label": "Fast",
+        "description": "Quick responses for everyday work.",
+        "modelId": "gpt-5.6-luna"
+      }
+    ]
+  }
+}
+```
+
+### PATCH `/api/company/assistant-settings`
+
+Owner-only. Accepts exactly one provider-neutral tier:
+
+```json
+{ "modelTier": "FAST" }
+```
+
+Unknown fields, vendor model IDs, non-owner requests, and cross-company writes
+are rejected. The response uses the same shape as GET, and the saved tier applies
+to the next model operation without changing prior messages.
 
 ### POST `/api/conversations`
 
@@ -171,7 +205,36 @@ Response:
 }
 ```
 
-The server may return suggestions in the initial response or expose a short polling/status mechanism. Keep the UI behavior consistent.
+Operations responses populate `sop`; employee responses populate
+`groundedAnswer`. The same validated structured payload is also stored on the
+assistant message so reopening or retrying a completed turn can restore the SOP
+or approved-answer card. The top-level value is the immediate-response
+convenience view of that stored result. These fields are optional and omitted
+from JSON when they do not apply.
+
+```ts
+interface SendMessageResult {
+  ownerMessage: Message;
+  assistantMessage: Message | null;
+  suggestedKnowledge: MemoryCandidate[];
+  sop?: SopDraft;
+  groundedAnswer?: GroundedAnswer;
+}
+```
+
+Message idempotency is bound to both the trusted conversation and the original
+request content:
+
+- a provider failure before a valid result persists no owner turn;
+- Retry reuses the original key and text;
+- the same key with different text returns `CONFLICT`;
+- a completed key returns the stored assistant message, suggestion, SOP, and/or
+  grounded answer without another model call; and
+- DynamoDB uses a strongly consistent message read before deciding to resume.
+
+The server may return a suggestion with the initial response. If suggestion
+extraction failed after the assistant answer was stored, the same idempotent
+retry may finish that reviewable suggestion without duplicating either message.
 
 ### GET `/api/memory-candidates`
 
@@ -237,12 +300,14 @@ Response:
   "data": {
     "candidateStatus": "APPROVED",
     "memory": {},
-    "indexStatus": "PENDING"
+    "indexStatus": "READY"
   }
 }
 ```
 
-A later response or refresh may show `READY` or `FAILED`.
+Repository-backed indexing normally returns `READY` in the approval response. A
+repository or canonical-document failure may return `FAILED` while preserving
+the authoritative approved record and a truthful retry path.
 
 ### POST `/api/memory-candidates/{candidateId}/reject`
 
@@ -273,7 +338,7 @@ Default: current approved memories visible to the actor.
 
 Owner-only. Creates an approved, source-backed knowledge page without first
 creating a model suggestion. The server validates company and department scope and
-then runs the normal render-and-index flow.
+then runs the normal render-and-repository-search flow.
 
 ```json
 {
@@ -314,11 +379,12 @@ not overwrite the existing version.
 
 The expected version is mandatory. A stale edit returns `STALE_WRITE`. A
 successful response contains the current record, the new version, full version
-history, and truthful `indexStatus` after the immediate indexing attempt.
+history, and truthful `indexStatus` after the immediate repository-search update.
 
 ### POST `/api/memories/{memoryId}/retry-index`
 
-Owner-only in MVP. Idempotently retries rendering and ingestion of the current version.
+Owner-only in MVP. Idempotently retries canonical rendering and repository-search
+readiness for the current version. It does not call a remote vector service.
 
 ### POST `/api/sops/generate`
 
@@ -380,37 +446,32 @@ These examples are directional. Codex may refine names while preserving responsi
 
 ```ts
 interface ModelGateway {
-  generateAssistantResponse(
-    input: GenerateAssistantResponseInput,
-  ): Promise<GenerateAssistantResponseResult>;
-
-  extractMemoryCandidates(
-    input: ExtractMemoryCandidatesInput,
-  ): Promise<ExtractMemoryCandidatesResult>;
-
-  classifyMemoryRelationship(
-    input: ClassifyMemoryRelationshipInput,
-  ): Promise<ClassifyMemoryRelationshipResult>;
-
-  generateSop(input: GenerateSopInput): Promise<GenerateSopResult>;
+  generateMarketingResponse(input: { companyId: string; /* ... */ }): Promise<GeneratedText>;
+  generateEmployeeResponse(input: { companyId: string; /* ... */ }): Promise<GeneratedText>;
+  generateProofResponse(input: { companyId: string; /* ... */ }): Promise<GeneratedText>;
+  extractCandidate(input: { companyId: string; /* ... */ }): Promise<MemoryCandidate | null>;
+  extractOnboardingCandidates(input: { companyId: string; /* ... */ }): Promise<MemoryCandidate[]>;
+  classifyRelationship(input: { companyId: string; /* ... */ }): Promise<ConflictResult>;
+  generateSop(input: { companyId: string; /* ... */ }): Promise<SopDraft>;
 }
 ```
+
+The trusted `companyId` is mandatory on every operation so the OpenAI adapter
+can load the current tier and resolve its allowed server-side model ID.
 
 ### Knowledge index
 
 ```ts
 interface KnowledgeIndex {
-  upsertApprovedMemory(
-    input: UpsertApprovedMemoryInput,
-  ): Promise<{ documentId: string }>;
-
-  deleteMemoryVersion(input: DeleteMemoryVersionInput): Promise<void>;
-
-  retrieve(
-    input: RetrieveApprovedMemoryInput,
-  ): Promise<KnowledgeIndexHit[]>;
+  upsert(memory: HydratedMemory, document: CanonicalMemoryDocument):
+    Promise<{ documentId: string }>;
+  retrieve(query: string, actor: ActorContext, requestedRoles?: CompanyRole[]):
+    Promise<KnowledgeIndexHit[]>;
 }
 ```
+
+`RepositoryKnowledgeIndex` uses the active memory repository. `upsert` preserves
+the existing lifecycle contract but does not ingest a remote search service.
 
 ### Memory repository
 
@@ -433,27 +494,27 @@ interface MemoryRepository {
 Minimum stable codes:
 
 - `VALIDATION_ERROR`
-- `UNAUTHORIZED`
 - `UNAUTHENTICATED`
 - `FORBIDDEN`
 - `NOT_FOUND`
 - `CONFLICT`
 - `STALE_WRITE`
+- `NO_APPROVED_CONTEXT`
 - `MODEL_UNAVAILABLE`
+- `PROVIDER_TIMEOUT`
+- `RATE_LIMITED`
 - `MODEL_OUTPUT_INVALID`
-- `MEMORY_EXTRACTION_FAILED`
-- `MEMORY_APPROVAL_FAILED`
-- `MEMORY_INDEX_FAILED`
-- `KNOWLEDGE_RETRIEVAL_FAILED`
-- `SOURCE_STORAGE_FAILED`
-- `DEMO_RESET_FAILED`
+- `INDEX_FAILED`
+- `CONFIGURATION_ERROR`
 
 ## 6. Idempotency and concurrency
 
-- Message creation uses a client-generated idempotency key.
+- Message creation uses a company- and conversation-scoped client key bound to
+  the original request text. Completed turns replay their stored structured
+  result; mismatched bodies fail with `CONFLICT`.
 - Approval uses a candidate version or updated-at precondition.
-- Direct ingestion uses a stable document ID derived from company, memory, and version.
-- Index retries do not create duplicate memory versions.
+- Repository indexing addresses the current company, memory, and version; a
+  retry does not create another memory version or remote search document.
 - Conditional DynamoDB updates reject double approval or stale edits.
 - The client treats `409 CONFLICT` as a prompt to reload current state.
 

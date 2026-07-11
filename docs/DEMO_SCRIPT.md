@@ -1,179 +1,147 @@
-# Tomorrow-ready demo script
+# Live OpenAI web demo script
 
 ## Demo objective
 
-In five to seven minutes, show one complete governed-memory loop:
+In five to seven minutes, prove one complete governed-memory loop with real model
+output:
 
-> Conversation -> suggested company knowledge -> human approval -> versioned
-> Playbook -> trusted reuse in ChatGPT
+> Conversation → live OpenAI suggestion → human approval → versioned Playbook →
+> repository retrieval → consistent Marketing, Operations, and Employee work
 
-The proof is not merely that AI can answer a question. The proof is that ChatGPT
-can read approved knowledge and suggest an addition while only My Little Company
-can approve company truth.
+The salon profile is clearly labelled demo company data. Every assistant answer,
+knowledge suggestion, campaign, conflict assessment, and SOP shown in the hosted
+journey is generated live; fixture output is never substituted.
 
 ## Pre-recording gates
 
-- Production is running with `APP_MODE=aws` and `AUTH_MODE=cognito`.
-- The owner can sign in through Cognito and complete a production reset.
-- The reset survives a reload and Review is empty.
-- The onboarding source below is visibly labelled **Synthetic demo data**.
-- The discount rule does not exist before the recording.
-- Bedrock generation, DynamoDB persistence, S3 source storage, and Knowledge Base
-  retrieval have passed `pnpm smoke:aws`.
-- The private ChatGPT app is connected through OAuth and exposes exactly
-  `search`, `fetch`, and `suggest_company_knowledge`.
-- The ChatGPT app asks before the suggestion tool makes a change.
-- No provider consoles, terminals, or developer tools are needed in the filmed
-  path.
+- Production uses `APP_MODE=aws`, `MODEL_PROVIDER=openai`, and the server-only
+  OpenAI API key.
+- `pnpm smoke:openai` passes Fast, Balanced, and Best.
+- The complete hosted salon journey passes once with Balanced.
+- The owner can sign in, reset `demo-salon`, and reload without losing state.
+- Workspace shows Balanced as the default assistant tier.
+- The 15% rule does not exist before the recording.
+- Review is empty and no provider console, terminal, or developer tool is needed.
+- A provider failure has been rehearsed and visibly offers Retry without fixture
+  output.
 
-Keep the existing local recording ready as the guaranteed backup.
-
-## Synthetic onboarding source
-
-Paste this short source during onboarding:
-
-> **Synthetic demo data — Maison Lumière Salon.** We are a premium neighborhood
-> salon for busy local professionals and clients preparing for important events.
-> Customers choose us for calm personal consultations and consistent service.
-> Our communication should feel warm, confident, refined, helpful, and never
-> pushy.
-
-Do not upload real customer data or imply that the synthetic source came from a
-real business.
+Private ChatGPT/MCP acceptance is not a gate for this web demonstration.
 
 ## Filmed journey
 
-### 1. Reset, sign in, and onboard — 60 to 90 seconds
+### 1. Reset and choose the assistant — 45 seconds
 
-Reset the demo company, sign in as the owner, and complete onboarding with the
-synthetic source.
-
-Approve the useful brand/customer suggestions. Ask one short proof question and
-open its source citation.
+Sign in as the owner, reset the demo company, and open **Workspace → Assistant
+settings**. Show the three plain-language choices: Fast, Balanced, and Best
+quality. Keep **Balanced** selected for the primary recording.
 
 Say:
 
-> “This is synthetic demo data. My Little Company has turned a short business
-> description into useful suggestions, but the owner still decides what becomes
-> trusted company knowledge.”
+> “The owner chooses a simple speed-and-quality level for the whole company. My
+> Little Company maps that choice safely on the server; employees cannot enter
+> arbitrary model names.”
 
-### 2. Teach the company through Chat — 45 seconds
+### 2. Teach the company through Chat — 60 seconds
 
-Open **Chat** and enter:
+Open **Chat → Marketing** and enter:
 
 > “We never discount more than 15%. We prefer offering a free add-on because we
 > want to maintain a premium image.”
 
-Show the suggested-company-knowledge card: what was heard, why it matters,
-source, scope, affected roles, and the `Approve / Edit / Ignore` actions.
+Wait for the live response. Show the suggested-company-knowledge card: what was
+heard, why it matters, source, scope, affected roles, and `Approve / Edit /
+Ignore`.
 
 Say:
 
-> “This is the key difference from ordinary chat history. The system recognized
-> a lasting rule, but it did not silently make that rule company truth.”
+> “OpenAI produced this suggestion from what I just typed, but it is not company
+> truth. The owner still decides what the company remembers.”
 
-Approve the suggestion without leaving the workflow.
+### 3. Approve and verify the Playbook — 45 seconds
 
-### 3. Inspect version 1 in Playbook — 45 seconds
+Approve the suggestion without leaving the conversation, then open its Playbook
+entry. Point out:
 
-Open the structured Playbook entry and point out:
+- the 15% statement and free-add-on preference;
+- the margin and premium-positioning rationale;
+- the conversation source;
+- the affected roles;
+- owner approver, approval date, and version 1.
 
-- the statement and rationale;
-- conversation source;
-- company scope and affected roles;
-- owner approver and approval date;
-- search readiness;
-- version 1.
-
-Say:
-
-> “The company remembers both the decision and why it was made.”
-
-### 4. Create version 2 — 45 seconds
-
-Edit the approved entry so the maximum discount is **10%**, preserve the
-free-add-on preference and rationale, then save it as version 2. Expand history
-and show that version 1 remains preserved.
+Reload the page and confirm the same approved version remains.
 
 Say:
 
-> “Changing a rule creates a new approved version. It does not rewrite history.”
+> “The approved version is durable company knowledge. The model did not approve
+> it, and reloading does not erase it.”
 
-Wait until the current entry shows version 2 and search status is ready before
-switching to ChatGPT.
+### 4. Reuse it in Marketing — 45 seconds
 
-### 5. Reuse current truth in ChatGPT — 60 seconds
+Return to Marketing and ask:
 
-In a new ChatGPT conversation with the private **My Little Company** app enabled,
-enter:
+> “Create a Tuesday promotion for quiet afternoons. Keep it premium.”
 
-> “Use My Little Company to find our approved promotion discount rule. Do not
-> use web browsing.”
-
-Then enter:
-
-> “Open the most relevant result and explain the current rule with its rationale
-> and source.”
-
-The result must be version 2, state the 10% maximum, preserve the free-add-on
-preference, and link to the canonical Playbook URL.
+Show that the live response stays at or below 15%, prefers a complimentary
+add-on, and cites the approved pricing decision.
 
 Say:
 
-> “ChatGPT is reading the current approved version, not a copied prompt or an old
-> chat message.”
+> “The next request searched the real approved Playbook record and sent only
+> authorized current context to the selected OpenAI model.”
 
-### 6. Suggest knowledge from ChatGPT — 60 seconds
+### 5. Turn it into an Operations SOP — 60 seconds
 
-Enter:
+Switch to **Operations** and ask:
 
-> “Our new lasting rule is that appointment reminders must be sent 24 hours in
-> advance. Offer to suggest this to My Little Company, but do not make the change
-> until I confirm.”
+> “Create an SOP for running this Tuesday promotion from booking to checkout.”
 
-Confirm only when ChatGPT asks. Show the successful suggestion result and Review
-link.
+Show the live structured SOP, its source decision, checks, and escalation. If you
+save it, point out that it becomes another suggestion requiring approval rather
+than approving itself.
 
-If useful, ask:
+### 6. Prove consistent employee guidance — 45 seconds
 
-> “Is that rule approved company policy now?”
+Switch to the seeded employee and ask:
 
-ChatGPT must answer no: the item is only proposed.
+> “Can I give a customer 25% off?”
 
-### 7. Prove the approval boundary — 30 seconds
-
-Return to **Review** in My Little Company. Show the 24-hour reminder item still
-waiting for a human decision. Do not approve it during the close.
+The answer must lead with **No**, state the approved 15% maximum and free-add-on
+preference, explain the rationale, and show the source title and approval date.
 
 Close with:
 
-> “ChatGPT can use and suggest company knowledge, but only the company can
-> approve it.”
+> “Explain it once. The owner approves it once. Then the company gives the same
+> source-backed answer across Marketing, Operations, and the team.”
 
-## Truthful fallback ladder
+## Optional model-selection proof
 
-Timebox each external repair attempt and step down without pretending a fallback
-is the hosted path.
+After the primary take, the owner may change Assistant settings to **Fast**, send
+one new harmless request, and show that only the new response uses the new tier.
+Restore Balanced afterward. Do not regenerate or imply changes to earlier
+messages.
 
-1. If Cognito alone is blocked, keep AWS and Netlify real, switch to seeded demo
-   authentication, and state that authentication is in demo mode.
-2. If Netlify is blocked, run the AWS-backed application through a temporary
-   HTTPS tunnel with seeded demo authentication.
-3. If Bedrock or Knowledge Base smoke testing still fails after two focused
-   repair attempts, run the entire recording in deterministic local mode through
-   the tunnel and keep the visible **Demo mode** label.
-4. Capture the real ChatGPT scene separately as soon as it passes and splice it
-   into the recording. Never fabricate a ChatGPT response or OAuth connection.
-5. If the ChatGPT connection never succeeds, omit that claim and use the existing
-   local platform recording as the backup.
+## Truthful failure policy
+
+1. For a transient timeout or rate limit, use the visible Retry action once.
+2. If the selected model remains unavailable, open Assistant settings and choose
+   another tier manually only if that tier passed the pre-recording smoke.
+3. Never hide an error, splice in fixture content, or describe offline behavior
+   as live OpenAI output.
+4. If Cognito alone is blocked during a private rehearsal, use the clearly
+   labelled seeded demo login; keep live OpenAI generation and durable company
+   storage unchanged.
+5. If the OpenAI live gate does not pass, postpone the real-LLM recording. A
+   labelled fixture run may be used for development evidence, not as the promised
+   live demo.
 
 ## Presenter checklist
 
-- [ ] Complete the journey once from reset without consoles or developer tools.
-- [ ] Confirm the onboarding source says **Synthetic demo data** on screen.
-- [ ] Confirm version 2 is `READY` before the ChatGPT search.
-- [ ] Confirm ChatGPT returns the 10% rule, not version 1.
-- [ ] Confirm the ChatGPT suggestion remains `PROPOSED` in Review.
-- [ ] Keep browser zoom, notifications, bookmarks, and account information safe
-  for recording.
-- [ ] End on the approval boundary, not infrastructure.
+- [ ] Fast, Balanced, and Best pass `pnpm smoke:openai`.
+- [ ] Balanced is selected at reset and at the start of the take.
+- [ ] The 15% rule is absent before the owner types it.
+- [ ] The suggestion is visibly proposed before approval.
+- [ ] Version 1, source, rationale, approver, and date survive reload.
+- [ ] Marketing respects the rule and cites it.
+- [ ] The Operations SOP cites approved knowledge and remains unapproved if saved.
+- [ ] The employee answer rejects 25% with the approved source.
+- [ ] No fixture fallback, provider key, account detail, or developer console is visible.

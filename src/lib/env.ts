@@ -29,6 +29,11 @@ const commonEnvironment = z.object({
   DEMO_COMPANY_ID: z.string().min(1).default("demo-salon"),
   NEXT_PUBLIC_APP_NAME: z.string().min(1).default("My Little Company"),
   NEXT_PUBLIC_DEMO_MODE: z.enum(["true", "false"]).default("true"),
+  MODEL_PROVIDER: z.enum(["fixture", "openai"]).default("fixture"),
+  OPENAI_API_KEY: optionalSecret(20),
+  OPENAI_MODEL_FAST: z.string().min(1).default("gpt-5.6-luna"),
+  OPENAI_MODEL_BALANCED: z.string().min(1).default("gpt-5.6-terra"),
+  OPENAI_MODEL_BEST: z.string().min(1).default("gpt-5.6-sol"),
   WAITLIST_STORAGE_MODE: z.enum(["local", "dynamodb"]).default("local"),
   AWS_REGION: z.string().min(1).optional(),
   DYNAMODB_TABLE_NAME: z.string().min(1).optional(),
@@ -66,6 +71,20 @@ function requireDurableWaitlist(
       code: "custom",
       path: ["MLC_AWS_REGION"],
       message: "MLC_AWS_REGION or AWS_REGION is required for DynamoDB waitlist storage.",
+    });
+  }
+}
+
+function requireOpenAi(
+  value: z.infer<typeof commonEnvironment>,
+  context: z.RefinementCtx,
+): void {
+  if (value.MODEL_PROVIDER !== "openai") return;
+  if (!value.OPENAI_API_KEY) {
+    context.addIssue({
+      code: "custom",
+      path: ["OPENAI_API_KEY"],
+      message: "OPENAI_API_KEY is required when MODEL_PROVIDER=openai.",
     });
   }
 }
@@ -114,6 +133,7 @@ const localEnvironmentSchema = commonEnvironment.extend({
 }).superRefine((value, context) => {
   requireAwsCredentialPair(value, context);
   requireDurableWaitlist(value, context);
+  requireOpenAi(value, context);
   requireCognito(value, context);
   requireMcpSigningKey(value, context);
 });
@@ -121,9 +141,6 @@ const localEnvironmentSchema = commonEnvironment.extend({
 const awsEnvironmentSchema = commonEnvironment.extend({
   APP_MODE: z.literal("aws"),
   AWS_REGION: z.string().min(1).optional(),
-  BEDROCK_MODEL_ID: z.string().min(1),
-  BEDROCK_KNOWLEDGE_BASE_ID: z.string().min(1),
-  BEDROCK_DATA_SOURCE_ID: z.string().min(1),
   DYNAMODB_TABLE_NAME: z.string().min(1),
   S3_BUCKET_NAME: z.string().min(1),
 }).superRefine((value, context) => {
@@ -134,8 +151,16 @@ const awsEnvironmentSchema = commonEnvironment.extend({
       message: "MLC_AWS_REGION or AWS_REGION is required in AWS mode.",
     });
   }
+  if (value.MODEL_PROVIDER !== "openai") {
+    context.addIssue({
+      code: "custom",
+      path: ["MODEL_PROVIDER"],
+      message: "MODEL_PROVIDER=openai is required in hosted AWS persistence mode.",
+    });
+  }
   requireAwsCredentialPair(value, context);
   requireDurableWaitlist(value, context);
+  requireOpenAi(value, context);
   requireCognito(value, context);
   requireMcpSigningKey(value, context);
 });

@@ -274,7 +274,11 @@ export class OnboardingService {
       }), session.version)
       : session;
     const question = values.question ?? session.proofQuestion;
-    const generated = await this.model.generateProofResponse({ question, approvedMemories: memories });
+    const generated = await this.model.generateProofResponse({
+      companyId: actor.companyId,
+      question,
+      approvedMemories: memories,
+    });
     const cited = new Set(generated.sourceMemoryIds);
     const citedMemories = memories.filter((memory) => cited.has(memory.record.id));
     if (citedMemories.length === 0) throw appError("NO_APPROVED_CONTEXT");
@@ -373,7 +377,11 @@ export class OnboardingService {
     for (const id of batch.candidateIds) {
       const candidate = await this.memories.getCandidate(id, actor.companyId);
       if (!candidate) continue;
-      const relation = await this.model.classifyRelationship({ candidate, approvedMemories: approved });
+      const relation = await this.model.classifyRelationship({
+        companyId: actor.companyId,
+        candidate,
+        approvedMemories: approved,
+      });
       const updated = await this.memories.updateCandidate({
         ...candidate,
         version: candidate.version + 1,

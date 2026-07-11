@@ -24,7 +24,8 @@ Turn the knowledge in a business owner’s head into trusted memory for every em
 - Make approval clear and easy for a non-technical owner.
 - Reuse one approved decision across Marketing, Operations, and Employee modes.
 - Preserve rationale, source, scope, approval, and version.
-- Keep the demo deterministic and independent of external model or vector-service availability.
+- Generate the demo's assistant work live through OpenAI while keeping
+  deterministic fixture behavior for automated tests only.
 - Provide a polished, resettable judge demo.
 
 ### Success criteria
@@ -108,7 +109,8 @@ The owner can approve, edit, or ignore a suggestion.
 - Approval records the actor and timestamp.
 - Editing creates the approved canonical content actually chosen by the owner.
 - Ignored suggestions cannot become searchable company truth.
-- The UI confirms whether indexing succeeded, is pending, or failed.
+- The UI confirms whether the approved record is available to assistants; with
+  repository retrieval this normally follows the authoritative write immediately.
 
 ### FR-05 Company Playbook
 
@@ -119,8 +121,8 @@ The user can browse approved company knowledge by type and open a detail page.
 - Only approved or explicitly archived entries appear according to the chosen filter.
 - Each detail shows current statement, rationale, source, applicable roles, approver, approval date, and version.
 - An owner can directly amend the title, canonical statement, rationale, and role scope from the detail page.
-- A direct owner amendment creates a new approved immutable version, preserves prior versions, records the edit as a source, and refreshes the derived knowledge index.
-- The detail page distinguishes Playbook truth from assistant-search availability and exposes a retry when indexing fails.
+- A direct owner amendment creates a new approved immutable version, preserves prior versions, records the edit as a source, and refreshes the repository search view.
+- The detail page distinguishes Playbook truth from assistant-search availability and exposes a retry when repository retrieval is unavailable.
 - Superseded versions remain available in history but are not shown as current truth.
 - The owner can browse pages by company and department and create an approved page directly.
 - The owner can filter the same approved records through Company basics,
@@ -202,7 +204,8 @@ Material memory actions are recorded.
 
 **Acceptance criteria:**
 
-- Record suggestion creation, edit, approval, rejection, supersession, archive, indexing attempt, and indexing result.
+- Record suggestion creation, edit, approval, rejection, supersession, archive,
+  and assistant-search readiness changes.
 - Audit entries include company, actor, timestamp, action, target, and safe metadata.
 - Do not store secrets or full hidden prompts in the audit trail.
 
@@ -237,7 +240,7 @@ access for the whole company or a department.
   OAuth consent and the current membership allow it.
 - Connected assistants expose no approval operation. A suggestion remains outside
   retrieval until a scoped human reviewer resolves any conflict, approves it,
-  and indexing succeeds.
+  and the current approved record is available to repository search.
 
 ### FR-14 Waitlist-only public access
 
@@ -256,6 +259,30 @@ creation remains invite-only through an existing owner.
   People & access.
 - Joining the waitlist creates no identity, session, membership, or company access.
 
+### FR-15 Company assistant settings
+
+An owner can choose the company-wide assistant model tier from Workspace
+settings without entering a vendor model ID.
+
+**Allowed tiers:**
+
+- `FAST` — fastest response.
+- `BALANCED` — default balance of speed and quality.
+- `BEST` — highest available quality.
+
+**Acceptance criteria:**
+
+- Existing and newly created companies default to `BALANCED`.
+- Only an active owner for that company can read or change the setting.
+- The browser submits only the provider-neutral tier; arbitrary model IDs and
+  unknown tiers are rejected.
+- The configured tier applies to the next model operation without rewriting old
+  conversations or regenerating prior messages.
+- The UI displays each tier's server-approved model name as secondary detail,
+  but never exposes the API key or accepts a model name from the browser.
+- An unavailable selected model produces a truthful retryable error and a link
+  to Assistant settings. It never triggers an automatic model or fixture switch.
+
 ## 4. Non-functional requirements
 
 ### Simplicity
@@ -268,7 +295,7 @@ creation remains invite-only through an existing owner.
 
 - Every authoritative claim is traceable to approved memory.
 - The UI visibly distinguishes suggestions, approved knowledge, and generated artifacts.
-- Errors never masquerade as successful approval or indexing.
+- Errors never masquerade as successful approval, retrieval readiness, or model generation.
 
 ### Security
 
@@ -279,8 +306,10 @@ creation remains invite-only through an existing owner.
 
 ### Reliability
 
-- The complete demo works without cloud credentials or model capacity.
+- Fixture-backed CI works without network credentials; the hosted demo uses a
+  configured OpenAI API key and makes real model requests.
 - Network operations use bounded retries and timeouts.
+- A failed live request never silently returns fixture content.
 - State transitions are idempotent where practical.
 
 ### Accessibility
@@ -293,7 +322,7 @@ creation remains invite-only through an existing owner.
 ### Performance
 
 - Show immediate local feedback when a message or approval is submitted.
-- Long AI and indexing work exposes progress and retry status.
+- Long AI work exposes progress and retry status.
 - Avoid loading the entire playbook for a single retrieval query.
 
 ## 5. User stories
@@ -323,7 +352,8 @@ creation remains invite-only through an existing owner.
 
 ### Presenter
 
-- As a presenter, I want a deterministic resettable demo so the full story works reliably.
+- As a presenter, I want a resettable demo with live OpenAI generation and clear
+  retry states so every model-produced result is genuine.
 
 ## 6. Primary journey
 

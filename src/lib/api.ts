@@ -8,6 +8,18 @@ interface ErrorEnvelope {
   meta: { requestId: string };
 }
 
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string,
+    public readonly retryable: boolean,
+    public readonly requestId: string,
+  ) {
+    super(message);
+    this.name = "ApiRequestError";
+  }
+}
+
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
@@ -16,7 +28,15 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   });
   const payload = (await response.json()) as SuccessEnvelope<T> | ErrorEnvelope;
   if (!response.ok || "error" in payload) {
-    throw new Error("error" in payload ? payload.error.message : "Request failed");
+    if ("error" in payload) {
+      throw new ApiRequestError(
+        payload.error.message,
+        payload.error.code,
+        payload.error.retryable,
+        payload.meta.requestId,
+      );
+    }
+    throw new Error("Request failed");
   }
   return payload.data;
 }

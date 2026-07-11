@@ -140,7 +140,11 @@ export class ConnectedSuggestionService {
       sourceRefs: [],
       createdAt: now,
     };
-    const extracted = await this.model.extractCandidate({ ownerMessage: message, createdBy: actor.userId });
+    const extracted = await this.model.extractCandidate({
+      companyId: actor.companyId,
+      ownerMessage: message,
+      createdBy: actor.userId,
+    });
     if (!extracted) {
       return {
         status: "NO_DURABLE_KNOWLEDGE",
@@ -173,6 +177,7 @@ export class ConnectedSuggestionService {
       draft.scope,
     );
     const classification = await this.model.classifyRelationship({
+      companyId: actor.companyId,
       candidate: draft,
       approvedMemories: relatedApproved,
     });

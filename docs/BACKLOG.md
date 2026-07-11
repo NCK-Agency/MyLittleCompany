@@ -150,18 +150,20 @@ Status values: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - Verifies source and 15% rule.
 - Passes repeatedly without external services.
 
-### MLC-013 Bedrock model adapter — DONE
+### MLC-013 OpenAI Responses model adapter — IN_PROGRESS
 
 **Depends on:** MLC-003, MLC-012
 
 **Acceptance criteria:**
 
-- Bedrock model calls occur only server-side.
-- Model ID is configurable.
+- OpenAI model calls occur only server-side and use `companyId` to resolve the
+  company tier.
+- Fast, Balanced, and Best model IDs are server configuration; the browser may
+  never submit an arbitrary model ID.
 - Prompts load from versioned files.
-- Structured outputs are validated and repaired at most once.
-- Timeouts and safe errors exist.
-- Local adapter still works.
+- Strict Structured Outputs are validated with Zod and business rules.
+- Timeouts, one transient retry, refusals, and safe unavailable-model errors exist.
+- Fixture output is explicit test/offline configuration with no silent fallback.
 
 ### MLC-014 DynamoDB and S3 adapters — IN_PROGRESS
 
@@ -177,35 +179,34 @@ Status values: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - S3 objects are private and company-prefixed.
 - Audit events exist for approval and index changes.
 
-### MLC-015 Bedrock Knowledge Base adapter — IN_PROGRESS
+### MLC-015 Repository-backed knowledge index — IN_PROGRESS
 
 **Depends on:** MLC-013, MLC-014
 
 **Acceptance criteria:**
 
-- Approved version rendered deterministically.
-- Direct ingestion uses stable document ID.
-- Metadata includes company, memory, version, roles, type, status, and sensitivity where supported.
-- Missing, malformed, or cross-company index metadata fails closed before hydration.
-- Retrieval hits are hydrated and revalidated from DynamoDB.
-- Index state supports pending, ready, failed, and retry.
+- The same `RepositoryKnowledgeIndex` works over local and DynamoDB memory repositories.
+- Ranking ignores stop words, requires meaningful overlap, and returns no arbitrary fallback hit.
+- Proposed, rejected, superseded, archived, stale-version, wrong-role, and
+  cross-company records fail closed.
+- Retrieval hits are reloaded and revalidated from the authoritative repository.
+- Private S3 documents remain provenance copies and are not a search dependency.
 
-### MLC-016 AWS smoke test — BLOCKED
+### MLC-016 OpenAI live smoke test — IN_PROGRESS
 
 **Depends on:** MLC-015
 
 **Acceptance criteria:**
 
-- Script invokes configured Bedrock model.
-- Approves and indexes a disposable demo memory or verifies an existing fixture.
-- Retrieves it with expected company scope.
-- Cleans up disposable data where safe.
-- Documentation explains required AWS resources and IAM actions.
+- Script performs one minimal strict structured request against each configured
+  Fast, Balanced, and Best model.
+- It reports the exact tier/model that failed without printing credentials or
+  full provider responses.
+- A tier is exposed in the hosted UI only after its smoke passes.
+- The Balanced tier completes the full hosted salon browser journey.
 
-**Blocker:** The executable smoke path is implemented, but no AWS resources or
-runtime credentials are available in the repository environment. Do not mark this
-ticket DONE until `pnpm smoke:aws` and `pnpm test:e2e:aws` pass against the
-provisioned account.
+Do not mark this ticket DONE until `pnpm smoke:openai` passes for all three
+configured models and the hosted Balanced journey passes without fixture output.
 
 ### MLC-017 Conflict detection — TODO
 
@@ -232,7 +233,7 @@ provisioned account.
 
 ### MLC-019 Deployment and demo hardening — TODO
 
-**Depends on:** all previous P0
+**Depends on:** MLC-013 through MLC-018 and MLC-020
 
 **Acceptance criteria:**
 
@@ -242,6 +243,21 @@ provisioned account.
 - All verification commands pass.
 - Known limitations documented.
 - Demo script matches actual behavior.
+
+### MLC-020 Owner assistant settings — IN_PROGRESS
+
+**Depends on:** MLC-013, MLC-014
+
+**Acceptance criteria:**
+
+- Workspace shows owner-only Fast, Balanced, and Best quality choices.
+- Existing, new, and reset companies default to Balanced.
+- `GET/PATCH /api/company/assistant-settings` reloads membership and rejects
+  employees, unknown tiers, vendor model IDs, and cross-company writes.
+- A saved tier affects the next operation only and persists in DynamoDB.
+- Safe telemetry records the selected tier and actual model used.
+- An unavailable model shows Retry and a settings link without automatically
+  changing tier or provider.
 
 ## P1 — Valuable after the core works
 
@@ -280,7 +296,8 @@ provisioned account.
 - Each save creates an immutable approved version with stale-write protection.
 - Prior sources remain attached and the direct owner edit is source-backed.
 - Version history and assistant-search status are visible.
-- The new version is rendered and re-indexed with a retryable failure state.
+- The new version is rendered and becomes current in repository search with a
+  retryable failure state.
 
 ### MLC-107 Scoped knowledge workspace and persistent chat — DONE
 
@@ -291,7 +308,7 @@ provisioned account.
 - Owners can create source-backed pages directly in a company/department Playbook
   tree.
 - Company knowledge is inherited; department knowledge remains department-only,
-  with role, sensitivity, approval, and indexing checks still enforced.
+  with role, sensitivity, approval, and retrieval checks still enforced.
 - Desktop and mobile flows are covered by the salon E2E path.
 
 ### MLC-108 Conversational knowledge context — DONE
@@ -338,9 +355,11 @@ provisioned account.
 - Owner chooses one proof question, imports pasted text or one selected ChatGPT conversation, and reviews up to three prioritized suggestions.
 - ChatGPT account history is parsed locally; only the selected active conversation branch is uploaded and quick setup is capped at 40,000 characters.
 - Leased, resumable processing creates no company truth automatically and remains idempotent under retries and cancellation.
-- Completion requires a cited answer from knowledge approved from that import, while indexing status remains separately visible.
+- Completion requires a cited answer from knowledge approved from that import,
+  while assistant-search readiness remains separately visible.
 - Raw imported content follows 24-hour, seven-day, 30-day, approved-retention, and owner-tombstone rules.
-- Local and AWS repositories, browser coverage, parser/security coverage, and the existing approval/index path are shared rather than duplicated.
+- Local and AWS repositories, browser coverage, parser/security coverage, and
+  the existing approval/retrieval path are shared rather than duplicated.
 
 ### MLC-113 Waitlist-only public access — DONE
 

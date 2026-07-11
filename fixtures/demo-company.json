@@ -3,6 +3,7 @@
     "id": "demo-salon",
     "name": "Maison Lumi\u00e8re Salon",
     "description": "A premium neighborhood hair salon focused on personal service, thoughtful recommendations, and a calm customer experience.",
+    "assistantModelTier": "BALANCED",
     "productsOrServices": [
       "Haircuts",
       "Color services",

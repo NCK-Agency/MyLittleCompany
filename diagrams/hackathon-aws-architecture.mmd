@@ -1,18 +1,15 @@
 flowchart LR
     U[Owner or employee] --> UI[Next.js web app]
     UI --> API[Server routes]
-    API --> AUTH[Actor and scope checks]
-    API --> FLOW[Governed memory services]
+    API --> AUTH[Cognito identity and membership checks]
+    API --> FLOW[Governed memory workflow]
+    API --> SETTINGS[Owner assistant tier]
 
-    FLOW --> DDB[(DynamoDB truth)]
-    FLOW --> MODEL[Bedrock Converse]
-    FLOW --> S3[(Private S3 docs)]
-    S3 --> INGEST[Direct KB ingestion]
-    INGEST --> KB[Bedrock Knowledge Base]
-    KB --> VEC[(S3 Vectors index)]
+    SETTINGS --> DDB[(DynamoDB approved truth)]
+    FLOW --> DDB
+    FLOW --> S3[(Private S3 sources and documents)]
+    FLOW --> INDEX[Repository knowledge index]
+    INDEX --> DDB
+    FLOW --> MODEL[OpenAI Responses API]
 
-    FLOW --> RETRIEVE[Retrieve then hydrate]
-    RETRIEVE --> KB
-    RETRIEVE --> DDB
-    RETRIEVE --> MODEL
     FLOW --> OBS[Structured telemetry]

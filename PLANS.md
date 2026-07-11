@@ -2,6 +2,214 @@
 
 This is the live execution plan. Codex must update it before and during multi-file work. Keep completed items and verification evidence so future sessions can understand what actually happened.
 
+## Active checkpoint: reconcile the OpenAI architecture documentation
+
+**Outcome:** Make the documented hosted architecture match the completed
+Bedrock-to-OpenAI implementation, including the conversation persistence and
+retry boundary that was added during final release review. Keep the explanation
+clear enough for a non-technical owner while preserving exact engineering
+contracts for contributors.
+
+**Affected files:** `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`,
+`docs/API_CONTRACTS.md`, `docs/AI_BEHAVIOR.md`, `docs/SECURITY.md`, and this
+plan. Runtime code, environment values, cloud resources, deployment state,
+versioning, commits, and unrelated license work are unchanged.
+
+**Implementation steps:**
+
+- [x] Audit the implemented OpenAI, repository, persistence, settings, and
+  recovery surfaces against the canonical architecture and operational docs.
+- [x] Update the architecture sequences and durable-hosting explanation for
+  stable request keys, deferred persistence, structured result storage, and
+  strongly consistent replay.
+- [x] Align the Message data model and conversation API response/retry contracts
+  with persisted SOP and grounded-answer payloads.
+- [x] Align AI and security guidance with the same provider-retry versus
+  user-retry boundary, then verify cross-document terminology, Mermaid syntax,
+  links, and diff hygiene.
+
+**Verification (2026-07-12):** The audit cross-checked the documentation against
+`Message`, `ConversationService`, the local and DynamoDB conversation
+repositories, `OpenAIModelGateway`, the assistant-settings route, and runtime
+composition. The reference layer now covers persisted `sop` and
+`groundedAnswer` fields, the content-bound idempotency marker, and the complete
+conversation response. The architecture explanation distinguishes the one
+gateway transport retry from a later user Retry, documents deferred owner-turn
+persistence, and shows strongly consistent replay. AI and security rules use the
+same boundary. README and `START_HERE.md` already link the architecture and need
+no additional discoverability change; the hosted Mermaid overview already names
+OpenAI, repository retrieval, owner settings, DynamoDB, S3, and Cognito.
+
+All five edited documents have balanced fenced blocks, no active Bedrock,
+Knowledge Base, or S3 Vectors language, and `git diff --check` passes. The 25
+focused tests for provider routing/retry, durable conversation recovery, and
+DynamoDB replay pass. No runtime file, dependency, version, environment value,
+deployment, commit, or unrelated license change was made in this documentation
+checkpoint.
+
+**Rollback:** Revert only this documentation checkpoint and its five factual doc
+edits. No runtime or external-state rollback is required.
+
+## Active checkpoint: MIT repository license
+
+**Outcome:** Make the repository explicitly available under the standard MIT
+License, with GitHub-detectable license text and matching package and README
+metadata.
+
+**Affected files:** `LICENSE`, `package.json`, `README.md`, and this plan. No
+runtime code, dependencies, product behavior, data, or deployment state changes.
+
+**Implementation steps:**
+
+- [x] Add the canonical MIT License text with the 2026 NCK Agency copyright.
+- [x] Declare `MIT` in package metadata and link the README to the license.
+- [x] Validate the package metadata, license text, and diff hygiene; run the
+  repository lint, typecheck, unit-test, and production-build gates.
+
+**Verification (2026-07-12):** The license text matches SPDX's canonical MIT
+terms, `package.json` parses with `license: "MIT"`, every direct production
+dependency declares MIT, Apache-2.0, or ISC, the README link resolves locally,
+and `git diff --check`, `pnpm lint`, the final sequential `pnpm typecheck`, and
+`pnpm build` pass. The unit suite passes 127 of 128 tests; the unrelated,
+already-modified conversation implementation fails its existing idempotency
+expectation in `tests/local-salon-flow.test.ts:104`, including when isolated.
+The license and metadata changes do not touch runtime or test code.
+
+**Rollback:** Remove `LICENSE`, remove the package `license` field and README
+license section, and delete this checkpoint. No application or external-state
+rollback is required.
+
+## Active checkpoint: migrate Bedrock to OpenAI with owner model selection
+
+**Outcome:** Replace every active Bedrock model and Knowledge Base dependency
+with real OpenAI Responses API generation plus repository-backed retrieval. Keep
+DynamoDB, private S3, Cognito, Netlify hosting, the governed-memory boundary, and
+the seeded salon company. Let an owner choose a company-wide Fast, Balanced, or
+Best quality model tier from Workspace settings without exposing credentials or
+accepting arbitrary provider model IDs from the browser.
+
+**Affected files:** Model and knowledge-index composition; company schema,
+repository persistence, owner settings service/API/UI; OpenAI configuration and
+smoke coverage; Bedrock adapters, dependencies, scripts, tests, diagrams, and
+active deployment/product documentation. Historical decisions remain recorded
+and are marked superseded rather than erased.
+
+**Implementation steps:**
+
+- [x] Add the OpenAI Responses API gateway for every `ModelGateway` operation,
+  with strict structured outputs, Zod validation, citation filtering, bounded
+  timeout/retry behavior, safe metadata, and no fixture fallback in OpenAI mode.
+- [x] Make model provider selection independent from persistence, use the
+  repository index with local or DynamoDB memory storage, and remove all active
+  Bedrock Runtime, Knowledge Base, S3 Vectors, quota, and configuration paths.
+- [x] Persist the provider-neutral `FAST | BALANCED | BEST` tier on the company,
+  expose an owner-only settings API, and add the plain-language selector to the
+  existing Workspace secondary settings surface.
+- [x] Replace AWS/Bedrock smoke and release documentation with an OpenAI smoke
+  across the three configured models, update the durable ADRs/specs/runbooks,
+  and keep MCP/ChatGPT acceptance outside this migration gate.
+- [x] Run focused security/provider/settings tests, then lint, strict types, all
+  unit tests, production build, the full browser suite, and live OpenAI smoke.
+
+**Implementation and verification (2026-07-12):** The official OpenAI SDK now
+implements all seven model operations through the Responses API with strict
+Structured Outputs, Zod/business validation, one schema-repair attempt, one
+bounded transient retry with jitter, safe provider metadata, and server-side
+citation filtering. Every operation resolves the current company tier before
+the request. OpenAI mode has no fixture or model fallback. Operations SOPs with
+no validated approved source fail safely, and retryable turns retain a stable
+idempotency key, reject changed request bodies, avoid orphaned provider-failure
+turns, and replay stored SOP/grounding data without regeneration. DynamoDB uses
+a strongly consistent message read for that immediate replay boundary.
+
+The active Bedrock Runtime, Knowledge Base, S3 Vectors, SDK, adapter, test,
+smoke, skill, and configuration paths are removed. DynamoDB remains structured
+truth, private S3 remains source retention, Cognito remains hosted identity, and
+`RepositoryKnowledgeIndex` searches approved local or DynamoDB records. ADR-038
+supersedes the applicable Bedrock decisions while their historical text remains.
+
+`pnpm smoke:openai` passed Fast (`gpt-5.6-luna`), Balanced
+(`gpt-5.6-terra`), and Best quality (`gpt-5.6-sol`). The semantic live browser
+proof passed the complete Marketing suggestion → owner approval → approved
+retrieval → compliant promotion → grounded SOP → cited employee answer loop on
+all three tiers (3/3). The final deterministic release gates pass: `pnpm lint`,
+`pnpm typecheck`, 31 unit-test files and 134 tests, `pnpm build`, and
+`pnpm test:e2e` with 10 journeys passed and the three credential-gated live
+journeys intentionally skipped. Owner settings, employee rejection, persistence,
+reset-to-Balanced, model routing, provider failure, retry replay, source/citation
+filtering, prompt injection, and tenant/role isolation all have focused coverage.
+The final independent pre-landing audit and `git diff --check` found no remaining
+migration blocker.
+
+**Deployment gate (2026-07-12):** The linked Netlify production configuration
+now has the non-secret `APP_MODE=aws`, `MODEL_PROVIDER=openai`, model-tier,
+durable-waitlist, and `AUTH_MODE=cognito` values; its existing DynamoDB, S3,
+AWS, Auth.js, and Cognito configuration is present. Netlify still has no
+server-only `OPENAI_API_KEY`. Credential policy correctly prevented copying the
+local key into a third-party service automatically, so no draft or production
+deploy was performed and no hosted claim is made. The current public root and
+demo-login routes remain HTTP 200. After the owner adds the key directly in the
+Netlify dashboard, create a draft with the production context, run the hosted
+Balanced salon journey, promote only if it passes, then remove the now-unused
+historical Bedrock environment variables.
+
+**Rollback:** Revert the migration as one reviewed change. Restore the prior
+Bedrock adapters and environment contract only through an explicit revert; do
+not silently select fixtures or another model when an OpenAI request fails. No
+existing DynamoDB company records or S3 source objects are deleted or rewritten
+by this migration.
+
+## Active checkpoint: hackathon submission README
+
+**Outcome:** Replace the obsolete kickstart-pack README with a judge-facing
+project overview that presents the working product, makes the governed-memory
+demo reproducible, links directly to the seeded demo, and distinguishes verified
+local behavior from the AWS/ChatGPT path that still requires live acceptance.
+
+**Affected files:** `README.md`, three real product screenshots under `docs/assets/`,
+and this plan. Runtime code, demo state, deployment configuration, and cloud
+resources are unchanged.
+
+**Implementation steps:**
+
+- [x] Audit the existing README against the canonical product, UX, architecture,
+  security, backlog, decision, and current verification records.
+- [x] Rewrite the narrative around the product promise, approval boundary,
+  exact 15% cross-role proof, runtime modes, local setup, and repository guide.
+- [x] Capture a real screenshot from the deterministic local suggestion flow and
+  replace the illustrative brand board in the README.
+- [x] Capture the deployed landing page's complete first section and place it at
+  the top of the README while keeping the approval screenshot with the demo.
+- [x] Capture the deployed owner Playbook without changing demo knowledge and
+  add it beside the README explanation of visible, approved company knowledge.
+- [x] Validate links and Markdown hygiene; run lint, typecheck, unit tests,
+  production build, and the complete browser suite.
+
+**Verification (2026-07-12):** The documented public site and seeded `/login-demo`
+route both return HTTP 200, and the live demo page exposes Maya with no password.
+The new `docs/assets/governed-memory-demo.png` is a 1440×800, 132 KB real local
+capture of the 15% suggestion awaiting approval. All referenced local files
+exist; `git diff --check`, `pnpm lint`, `pnpm typecheck`, all 30 unit-test files
+and 116 tests, `pnpm build`, and all nine Chromium product journeys pass. The
+browser suite independently re-proved the exact Marketing → approval → Operations
+→ Employee flow described in the README.
+
+The follow-up `docs/assets/landing-page-hero.png` is a 1376×997 element-level
+capture of the live HTTP 200 landing hero at a 1440 px desktop viewport. It
+includes the public navigation, product promise, CTA, approved-company-truth
+visual, and the five-step governed-memory loop without including the second
+landing section. A clean reload produced no console errors, and every fresh page,
+font, stylesheet, script, and prefetched route request returned HTTP 200.
+
+The final `docs/assets/playbook-page.png` is a 1440×900 deployed-demo viewport
+showing the approved-only Playbook, company/department hierarchy, topic views,
+scope, and version metadata. Maya's seeded owner session was used read-only; no
+company knowledge or demo state was changed. The page and API calls returned
+HTTP 200 and the browser reported no console errors.
+
+**Rollback:** Restore the previous `README.md`, remove the three screenshots, and
+delete this checkpoint. No application data or external state requires rollback.
+
 ## Active checkpoint: secondary link-button contrast
 
 **Outcome:** Keep secondary link-buttons readable when they appear inside a

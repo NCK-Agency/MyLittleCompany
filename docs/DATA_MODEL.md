@@ -83,6 +83,16 @@ type ConflictRelation =
   | "EXCEPTION";
 ```
 
+### Assistant model tier
+
+```ts
+type AssistantModelTier = "FAST" | "BALANCED" | "BEST";
+```
+
+The company stores only this provider-neutral tier. `BALANCED` is the default.
+Vendor model IDs remain server configuration and are never accepted from the
+browser or persisted as a company preference.
+
 ### Role
 
 ```ts
@@ -132,6 +142,7 @@ interface Company {
   differentiators: string[];
   brandVoice: string[];
   organizationalUnits: OrganizationalUnit[];
+  assistantModelTier: AssistantModelTier;
   timezone: string;
   createdAt: string;
   updatedAt: string;
@@ -198,9 +209,30 @@ interface Message {
   actorId?: UserId;
   content: string;
   sourceRefs: SourceReference[];
+  sop?: SopDraft;
+  groundedAnswer?: GroundedAnswer;
   createdAt: string;
 }
 ```
+
+`sop` and `groundedAnswer` exist only on assistant messages. They preserve the
+validated structured result required to reopen a conversation or replay a
+completed retry without calling the model again. A stored SOP may include safe
+operation metadata such as prompt version and actual model ID; neither payload
+contains hidden reasoning or provider-private response content.
+
+`SopDraft` is the validated procedure shape defined by `sopDraftSchema` and
+`schemas/sop.schema.json`: purpose, trigger, prerequisites, ordered steps,
+checks, exceptions, escalation, inputs, outputs, assumptions, and approved
+memory references. `GroundedAnswer` stores the rendered answer, grounding
+status, and the validated memory ID, version, title, and approval date for each
+source.
+
+The client-generated message idempotency key is stored as a repository marker
+pointing to the owner message rather than as an editable message field. The same
+key must carry the same normalized request content. A different body returns
+`CONFLICT`. DynamoDB reads the completed message sequence consistently before a
+retry decides whether generation is still required.
 
 Do not persist hidden chain-of-thought or provider-private reasoning.
 
@@ -319,7 +351,8 @@ A direct Playbook amendment by an authorized owner creates the next immutable
 version and atomically advances `MemoryRecord.currentVersion`. The new version
 retains prior source references and adds a `MANUAL` source reference representing
 the owner-authored edit. Its structured state is authoritative immediately;
-`indexStatus` returns to `PENDING` until the derived Knowledge Base copy is ready.
+the repository-backed index marks the current record `READY` when that
+authoritative write is visible. No remote vector-ingestion job is involved.
 
 Directly created Playbook pages follow the same approved record and immutable
 version model. A page created from chat references the selected conversation
@@ -399,6 +432,11 @@ stateDiagram-v2
     READY --> PENDING: new version
 ```
 
+The status is retained for lifecycle compatibility and truthful failure
+reporting. With `RepositoryKnowledgeIndex`, `PENDING` normally transitions to
+`READY` in the approval flow as soon as the current approved record is readable;
+there is no external ingestion or eventual-consistency dependency.
+
 ## 6. Retrieval eligibility
 
 A memory is authoritative only when all are true:
@@ -425,6 +463,7 @@ Centralize this logic in one tested domain function.
 | Membership | `COMPANY#{companyId}` | `MEMBER#{userId}` |
 | Conversation | `COMPANY#{companyId}` | `CONVERSATION#{conversationId}` |
 | Message | `COMPANY#{companyId}#CONVERSATION#{conversationId}` | `MESSAGE#{createdAt}#{messageId}` |
+| Message idempotency marker | `COMPANY#{companyId}#CONVERSATION#{conversationId}` | `IDEMPOTENCY#{clientKey}` |
 | Candidate | `COMPANY#{companyId}` | `CANDIDATE#{candidateId}` |
 | Memory record | `COMPANY#{companyId}` | `MEMORY#{memoryId}` |
 | Memory version | `COMPANY#{companyId}#MEMORY#{memoryId}` | `VERSION#{versionPadded}` |
@@ -487,6 +526,8 @@ business-data access.
 20. Consume one authorization code exactly once.
 21. Rotate or revoke one hashed refresh grant and revoke a token family.
 22. Idempotently add one public waitlist email without scanning or creating a membership.
+23. Read the current company's assistant tier.
+24. Update the assistant tier for an active owner.
 
 OAuth items use DynamoDB TTL for expired codes and refresh grants. TTL is cleanup,
 not authorization: every read still checks expiry, binding, and one-time use.
@@ -498,7 +539,7 @@ company, `WAITING` status, `PUBLIC_SITE` source, and timestamps. It has no
 `companyId`, identity subject, membership, grant, or role. The API exposes no
 public list or email lookup.
 
-## 9. Canonical index document
+## 9. Canonical memory document
 
 Render a memory version into deterministic Markdown:
 
@@ -532,7 +573,10 @@ Protect margins and maintain premium brand positioning.
 Approved by ... at ...
 ```
 
-The render function must be deterministic so retries produce the same content for the same version.
+The render function must be deterministic so retries produce the same content
+for the same version. In AWS mode this document is retained privately in S3 for
+provenance and export; repository-backed retrieval ranks the structured record
+directly and does not ingest this document into a vector service.
 
 ## 10. Validation and size limits
 

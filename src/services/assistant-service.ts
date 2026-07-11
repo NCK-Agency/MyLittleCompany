@@ -15,7 +15,11 @@ export class AssistantService {
     scope: KnowledgeScope = { level: "COMPANY" },
   ): Promise<GroundedAnswer> {
     const memories = await this.retrieval.retrieve(question, actor, ["EMPLOYEE", "FRONT_DESK"], scope);
-    const generated = await this.model.generateEmployeeResponse({ question, approvedMemories: memories });
+    const generated = await this.model.generateEmployeeResponse({
+      companyId: actor.companyId,
+      question,
+      approvedMemories: memories,
+    });
     const sources = generated.sourceMemoryIds.flatMap((id) => {
       const memory = memories.find((item) => item.record.id === id);
       return memory ? [{

@@ -1,114 +1,83 @@
 # Deploy to Netlify
 
-The application supports a manual Netlify CLI deployment from the current
-working tree. GitHub authentication and a Git push are not prerequisites for the
-filmed demo. Build settings live in `netlify.toml`.
+The hosted web demo uses Netlify for the Next.js application, OpenAI for live
+generation, DynamoDB and private S3 for durable company data, and Cognito/Auth.js
+for invited-user identity. Build settings remain in `netlify.toml`.
 
-## First deployment
+## 1. Bootstrap the site
 
 1. Authenticate the Netlify CLI and create or link one site from this working
    tree.
-2. Deploy the safe local/demo configuration once to obtain the permanent HTTPS
-   origin. Do not continue with a draft-deploy URL.
-3. Netlify reads `netlify.toml` and uses:
+2. Obtain the permanent `https://<site>.netlify.app` origin before configuring
+   Auth.js and Cognito. Do not use a draft-deploy URL for callbacks.
+3. Netlify reads:
    - Build command: `pnpm build`
    - Publish directory: `.next`
    - Node.js: 22
    - pnpm: the version in `package.json`
-4. Before deploying, add these environment variables in Netlify:
+4. Use the permanent origin consistently for `AUTH_URL`, `APP_BASE_URL`, Cognito
+   callback/logout URLs, Playbook links, and future MCP metadata.
 
-   ```text
-   APP_MODE=local
-   AUTH_MODE=demo
-   AUTH_SECRET=<at-least-32-random-characters>
-   AUTH_URL=https://<your-site>.netlify.app
-   APP_BASE_URL=https://<your-site>.netlify.app
-   WAITLIST_STORAGE_MODE=dynamodb
-   MLC_AWS_REGION=us-east-1
-   DYNAMODB_TABLE_NAME=<table-name>
-   MLC_AWS_ACCESS_KEY_ID=<functions-secret>
-   MLC_AWS_SECRET_ACCESS_KEY=<functions-secret>
-   MCP_ENABLED=false
-   DEMO_COMPANY_ID=demo-salon
-   NEXT_PUBLIC_APP_NAME=My Little Company
-   NEXT_PUBLIC_DEMO_MODE=true
-   ```
+A temporary bootstrap preview may use `APP_MODE=local`, `AUTH_MODE=demo`, and
+`MODEL_PROVIDER=fixture`, but it must remain visibly labelled offline/demo and
+must not be presented as the live-model proof.
 
-5. Deploy to production and record the exact `https://<site>.netlify.app`
-   origin. Use it consistently for `AUTH_URL`, `APP_BASE_URL`, Cognito callback
-   and logout URLs, OAuth metadata, Playbook citations, and `/mcp`.
+## 2. Configure the hosted web demo
 
-`APP_MODE=local` keeps assistant and company state on the credential-free demo
-path. The public waitlist is deliberately independent and must use DynamoDB on a
-public Netlify deployment so a successful submission survives cold starts. Keep
-the two app-specific AWS values in non-readable Functions secrets. For a private
-developer-only deployment that does not collect real leads, set
-`WAITLIST_STORAGE_MODE=local` and treat its temporary waitlist as disposable.
-Do not add private values to `netlify.toml` or commit `.env.local`.
-
-## Durable AWS demo deployment
-
-Provision the resources in `docs/AWS_SETUP.md`, then open **Project
-configuration → Environment variables** in Netlify. Add these variables with
-Functions runtime scope:
+Provision only the DynamoDB, private S3, IAM, and Cognito resources described in
+`docs/AWS_SETUP.md`. In **Project configuration → Environment variables**, add
+these values with Functions runtime scope:
 
 ```text
 APP_MODE=aws
+MODEL_PROVIDER=openai
+OPENAI_API_KEY=<server-runtime-secret>
+OPENAI_MODEL_FAST=gpt-5.6-luna
+OPENAI_MODEL_BALANCED=gpt-5.6-terra
+OPENAI_MODEL_BEST=gpt-5.6-sol
+
 WAITLIST_STORAGE_MODE=dynamodb
 AUTH_MODE=cognito
 AUTH_SECRET=<at-least-32-random-characters>
 AUTH_URL=https://<your-site>.netlify.app
 APP_BASE_URL=https://<your-site>.netlify.app
-MCP_ENABLED=true
-MCP_OAUTH_PRIVATE_JWK=<secret-json-rsa-private-jwk>
-MCP_OAUTH_KEY_ID=mlc-mcp-1
+
 COGNITO_REGION=us-east-1
 COGNITO_USER_POOL_ID=<pool-id>
 COGNITO_CLIENT_ID=<app-client-id>
 COGNITO_CLIENT_SECRET=<secret>
 COGNITO_ISSUER=https://cognito-idp.us-east-1.amazonaws.com/<pool-id>
 COGNITO_DOMAIN=https://<domain>.auth.us-east-1.amazoncognito.com
+
 MLC_AWS_REGION=us-east-1
-BEDROCK_MODEL_ID=amazon.nova-lite-v1:0
-BEDROCK_KNOWLEDGE_BASE_ID=<knowledge-base-id>
-BEDROCK_DATA_SOURCE_ID=<data-source-id>
 DYNAMODB_TABLE_NAME=<table-name>
 S3_BUCKET_NAME=<bucket-name>
-MLC_AWS_ACCESS_KEY_ID=<secret>
-MLC_AWS_SECRET_ACCESS_KEY=<secret>
+MLC_AWS_ACCESS_KEY_ID=<functions-secret>
+MLC_AWS_SECRET_ACCESS_KEY=<functions-secret>
+
+MCP_ENABLED=false
+DEMO_COMPANY_ID=demo-salon
+NEXT_PUBLIC_APP_NAME=My Little Company
+NEXT_PUBLIC_DEMO_MODE=true
 ```
 
-Keep the existing demo and public variables. Netlify does not expose variables
-declared only in `netlify.toml` to the generated Next.js runtime functions, so
-configure the values in the UI (or Netlify CLI/API) and redeploy after every
-environment change. Do not give AWS credentials Build scope unless the build
-actually requires them; this application uses them at Functions runtime.
+`APP_MODE` controls persistence; `MODEL_PROVIDER` controls generation. Do not
+couple them or configure a hidden fixture fallback. `WAITLIST_STORAGE_MODE`
+remains independent so public leads persist in DynamoDB in every public mode.
 
-Use build visibility for public/non-sensitive build variables. Mark Cognito
-client secrets, the OAuth private JWK, AWS access credentials, and `AUTH_SECRET`
-as secrets with server runtime/Functions visibility only. Do not print their
-values into deployment logs.
+Keep `OPENAI_API_KEY`, Cognito client secret, AWS access credentials, and
+`AUTH_SECRET` restricted to server runtime/Functions. The three model IDs are
+non-secret server configuration, but they must not be accepted from browser
+requests. Do not commit `.env.local`, print secret values, or give runtime
+credentials Build scope unless the build genuinely needs them.
 
-After redeploying, reset the demo from a clean browser session and complete the
-filmed path in `docs/DEMO_SCRIPT.md`. Confirm onboarding, approval, Playbook
-version history, Review state, and the current version survive a page reload.
+The web migration does not require the private ChatGPT connection. Keep
+`MCP_ENABLED=false` until the web demo passes. Enabling MCP later also requires
+the OAuth private JWK/key ID and the separate connector acceptance checklist.
 
-Before connecting ChatGPT, verify:
+## 3. Pre-deploy verification
 
-```text
-/.well-known/oauth-protected-resource
-/.well-known/oauth-authorization-server
-/oauth/jwks
-/brand/mlc-app-icon.svg
-/mcp
-```
-
-The first four paths must be public and valid. An unauthenticated `/mcp` request
-must return `401` with a `WWW-Authenticate` resource-metadata challenge.
-
-## Local verification
-
-Run the same production build used by Netlify:
+Run the same production gates used by Netlify:
 
 ```bash
 pnpm install --frozen-lockfile
@@ -116,31 +85,43 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm test:e2e
 ```
 
-Netlify's current Next.js runtime is detected during the build. This project does
-not install the legacy Netlify Next.js plugin directly.
+Then run the live provider gate from a secure environment:
 
-## Tomorrow AWS cutover gate
+```bash
+pnpm smoke:openai
+```
 
-Do not switch the public modes merely because the resources exist. The account
-hit its Bedrock daily token quota on 2026-07-11, so the verified public fallback
-must remain `APP_MODE=local`, `AUTH_MODE=demo`, `MCP_ENABLED=false`, and
-`NEXT_PUBLIC_DEMO_MODE=true` until a fresh smoke passes. Keep
-`WAITLIST_STORAGE_MODE=dynamodb`; public lead durability is independent of the
-Bedrock cutover.
+The smoke must make one minimal schema-constrained request with Fast, Balanced,
+and Best. Do not expose a tier whose configured model fails. The command must not
+print the API key or full provider response.
 
-When capacity is available:
+## 4. Deploy and accept
 
-1. Run `pnpm smoke:aws` with the configured AWS profile and resource IDs.
-2. Start the initial data-source ingestion and wait for `COMPLETE`.
-3. Run `AUTH_MODE=demo pnpm test:e2e:aws` before involving Cognito.
-4. Set `APP_MODE=aws`, `AUTH_MODE=cognito`, `MCP_ENABLED=true`, and
-   `NEXT_PUBLIC_DEMO_MODE=false` in Netlify.
-5. Deploy with `--skip-functions-cache`, then verify Cognito login, reset/reload
-   persistence, OAuth discovery, `/oauth/jwks`, and the unauthenticated `/mcp`
-   challenge.
-6. Only then connect ChatGPT and run search, fetch, and suggestion acceptance.
+1. Deploy with the durable configuration and a fresh Functions bundle.
+2. Sign in as the demo owner and reset only `demo-salon`.
+3. Open Workspace → Assistant settings. Confirm Balanced is selected, then save
+   Fast and verify the next request records the Fast model. Restore Balanced.
+4. Complete the full salon flow in `docs/DEMO_SCRIPT.md`: live extraction,
+   approval, reload, compliant promotion, grounded SOP, and cited employee answer.
+5. Confirm the approved version, source, and model tier survive a reload.
+6. Force or simulate one provider failure and confirm the UI preserves the draft,
+   says the model is temporarily unavailable, offers Retry, and returns no
+   fixture content.
 
-If any gate fails, restore all four fallback values together and redeploy. Never
-present a mixed adapter state or hide the Demo mode label.
+Only after all three model smokes and the hosted Balanced salon journey pass may
+the deployment be described as the working real-LLM demo.
+
+## 5. Failure policy
+
+- A missing or invalid OpenAI key is a configuration failure; fail startup or the
+  request clearly.
+- A timeout, rate limit, or transient provider error receives at most one retry.
+- An unavailable selected model never triggers a tier change or fixture response.
+- If DynamoDB or S3 fails, do not report approval or source persistence as
+  successful.
+- If Cognito is the only blocker during a private rehearsal, seeded demo auth may
+  be used temporarily and visibly labelled. It does not waive the live OpenAI,
+  durable persistence, or authorization checks.

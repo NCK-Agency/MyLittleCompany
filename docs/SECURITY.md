@@ -64,7 +64,7 @@ Controls:
 
 - Every business-data partition key starts with the trusted company namespace,
   including message and immutable-version child collections.
-- Company metadata filter in the knowledge index.
+- Repository queries receive the trusted server-derived company scope.
 - Knowledge-index hits with missing or malformed company, approval, role,
   sensitivity, memory, or version metadata fail closed.
 - Server-side hydration verifies `companyId` after retrieval.
@@ -80,7 +80,7 @@ Controls:
 - Index hits are hydrated from the structured record.
 - Verify current version and `APPROVED` status.
 - Superseded and archived entries are excluded by default.
-- Reindex current versions after changes.
+- Repository retrieval ranks only current records after changes.
 - Responses cite version and approval date.
 
 ### T5 Model invents an approval or source
@@ -99,6 +99,8 @@ Controls:
 - Do not store passwords, access tokens, API keys, payment data, or private credentials as memory.
 - Run basic secret-pattern detection on sources and suggestions.
 - Keep provider keys in server environment variables.
+- Keep the OpenAI API key and allowed tier-to-model mapping in server-only
+  Functions configuration; never include them in browser bundles or company data.
 - Redact sensitive values from logs and telemetry.
 - Limit excerpts shown in the UI.
 
@@ -120,7 +122,9 @@ Controls:
 - Bounded retrieval result counts.
 - Model timeouts and limited retries.
 - Maximum candidate count per extraction.
-- Idempotency keys for duplicate submits.
+- Idempotency keys for duplicate submits, bound to the original request text.
+- Strongly consistent message replay before an immediate retry can invoke the
+  provider or append another assistant response.
 
 ### T9 Malicious or malformed model output
 
@@ -132,22 +136,37 @@ Controls:
 - Never interpolate model output into code, queries, paths, or IAM policies.
 - Escape content rendered as HTML.
 
-### T10 Index inconsistency
+### T10 Retrieval inconsistency
 
-An approved record fails to index, or an obsolete document remains searchable.
+A repository query returns an obsolete, malformed, or unauthorized record.
 
 Controls:
 
 - Structured repository is authoritative.
 - Separate index status.
-- Hydrate and verify every hit.
-- Stable document IDs and idempotent retries.
+- Reload and verify every hit against the current record and version.
+- Repository-backed retrieval does not trust S3 documents or an external vector
+  index as an authorization source.
 - Audit index operations.
-- Provide reconciliation tooling later.
+- Keep ranking deterministic and company-scoped.
 
-## 4. Important Bedrock Knowledge Base caveat
+## 4. Model and retrieved-content boundary
 
-Do not assume content safety controls automatically sanitize the reference chunks returned from a Knowledge Base. Treat retrieved references as untrusted data and enforce application-level controls before generation.
+OpenAI receives only application-selected, current approved memory. Treat all
+model output and all imported or retrieved text as untrusted data. Structured
+Outputs constrain shape but do not replace Zod validation, authorization,
+citation checks, or the owner's approval decision.
+
+The OpenAI gateway may retry one transient failure. It must never silently change
+the selected model, call a model ID supplied by the browser, or fall back to a
+fixture response. Provider errors expose safe messages without response bodies,
+request headers, or key material.
+
+The user-visible Retry action reuses the original request key and content. A
+completed assistant response is replayed from its stored structured SOP or
+grounded-answer data, not regenerated. A changed body with the same key fails
+closed with `CONFLICT` so a new model answer cannot be attached to an older
+persisted source.
 
 ## 5. Authorization matrix
 
@@ -161,6 +180,7 @@ Do not assume content safety controls automatically sanitize the reference chunk
 | View internal approved memory | Yes | Yes | Role-scoped | Role-scoped |
 | View confidential memory | Yes | Authorized only | No by default | Only if explicitly authorized |
 | Supersede/archive memory | Yes | No | No | No |
+| View/change assistant model tier | Yes | No | No | No |
 | Reset demo | Demo owner | No | No | No |
 
 ## 6. Required server-side checks
@@ -196,6 +216,13 @@ Before approval:
 3. Confirm candidate still proposed and version matches.
 4. Confirm resolution is explicit for conflicts.
 5. Write audit events.
+
+Before reading or changing Assistant settings:
+
+1. Confirm the membership is active and belongs to the requested company.
+2. Confirm the actor is an owner.
+3. Accept only `FAST`, `BALANCED`, or `BEST`; ignore/reject vendor model IDs.
+4. Persist only the provider-neutral tier.
 
 Authentication cookies contain identity, not authorization. The server reloads
 membership status and grants on every request. Company grants cover all
@@ -299,13 +326,16 @@ Malicious imported text:
 
 - [ ] No secrets in Git history or browser bundle.
 - [ ] Demo credentials are limited and disposable.
-- [ ] AWS IAM policy is least privilege for required resources.
+- [ ] OpenAI API key is stored only as a server-runtime secret.
+- [ ] All three configured model tiers pass the live smoke test before they are exposed.
+- [ ] AWS IAM policy is least privilege for DynamoDB, private S3, and Cognito.
 - [ ] S3 bucket is not public.
 - [ ] Cross-company retrieval test passes.
 - [ ] Unapproved-memory retrieval test passes.
 - [ ] Prompt-injection fixture passes.
 - [ ] Approval is server-authorized.
-- [ ] Indexing failure is visible and retryable.
+- [ ] Repository retrieval failure is visible and retryable.
+- [ ] A live provider failure does not return fixture content or expose provider details.
 - [ ] Logs do not contain raw credentials or unnecessary personal data.
 
 ## 12. Imported-source controls

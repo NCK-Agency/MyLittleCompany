@@ -15,7 +15,7 @@ import type {
   Message,
   SopDraft,
 } from "@/domain/types";
-import { apiRequest } from "@/lib/api";
+import { ApiRequestError, apiRequest } from "@/lib/api";
 import { BrandMark } from "./brand-mark";
 import { useViewer } from "./viewer-context";
 import { canAccess, isOwner } from "@/domain/authorization";
@@ -41,6 +41,8 @@ function fromDomainMessage(message: Message): MlcUiMessage {
     createdAt: message.createdAt,
     text: message.content,
     sources: message.sourceRefs,
+    sop: message.sop,
+    groundedAnswer: message.groundedAnswer,
   };
 }
 
@@ -76,7 +78,12 @@ export function ChatWorkspace() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
-  const [restoreDraft, setRestoreDraft] = useState<{ text: string; requestId: number } | null>(null);
+  const [modelUnavailable, setModelUnavailable] = useState(false);
+  const [restoreDraft, setRestoreDraft] = useState<{
+    text: string;
+    requestId: number;
+    idempotencyKey: string;
+  } | null>(null);
   const [query, setQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -135,6 +142,7 @@ export function ChatWorkspace() {
     setMessages([]);
     setSourceMessages([]);
     setError("");
+    setModelUnavailable(false);
     setStatus("");
     setRestoreDraft(null);
     setSidebarOpen(false);
@@ -144,6 +152,7 @@ export function ChatWorkspace() {
   const openConversation = useCallback(async (conversation: Conversation): Promise<void> => {
     setBusy(true);
     setError("");
+    setModelUnavailable(false);
     setStatus("Opening conversation…");
     try {
       const [loaded, candidates] = await Promise.all([
@@ -165,6 +174,7 @@ export function ChatWorkspace() {
       setSidebarOpen(false);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not open this conversation.");
+      setModelUnavailable(caught instanceof ApiRequestError && caught.code === "MODEL_UNAVAILABLE");
       setStatus("");
     } finally {
       setBusy(false);
@@ -202,6 +212,7 @@ export function ChatWorkspace() {
     setSaveStatement(commandBody || lastOwnerMessage?.content || "");
     setSaveDialogOpen(true);
     setError("");
+    setModelUnavailable(false);
     setStatus(owner ? "Review the page before saving it as approved knowledge." : "Review the suggestion before sending it for approval.");
   }
 
@@ -218,6 +229,9 @@ export function ChatWorkspace() {
     }
 
     const optimisticId = newUiId("local-user");
+    const idempotencyKey = restoreDraft?.text === content
+      ? restoreDraft.idempotencyKey
+      : crypto.randomUUID();
     setMessages((current) => [...current, {
       id: optimisticId,
       role: "user",
@@ -226,6 +240,7 @@ export function ChatWorkspace() {
     }]);
     setBusy(true);
     setError("");
+    setModelUnavailable(false);
     setRestoreDraft(null);
     setStatus(role === "EMPLOYEE" ? "Finding approved company knowledge…" : "Working with the Company Playbook…");
 
@@ -239,7 +254,7 @@ export function ChatWorkspace() {
         groundedAnswer?: GroundedAnswer;
       }>(`/api/conversations/${conversation.id}/messages`, {
         method: "POST",
-        body: JSON.stringify({ content, idempotencyKey: crypto.randomUUID() }),
+        body: JSON.stringify({ content, idempotencyKey }),
       });
       const candidate = result.suggestedKnowledge[0];
       const assistantUiMessage = result.assistantMessage ? {
@@ -264,8 +279,9 @@ export function ChatWorkspace() {
     } catch (caught) {
       setMessages((current) => current.filter((item) => item.id !== optimisticId));
       setError(caught instanceof Error ? caught.message : "The message could not be sent. Your draft was restored.");
+      setModelUnavailable(caught instanceof ApiRequestError && caught.code === "MODEL_UNAVAILABLE");
       setStatus("");
-      setRestoreDraft({ text: content, requestId: Date.now() });
+      setRestoreDraft({ text: content, requestId: Date.now(), idempotencyKey });
     } finally {
       setBusy(false);
     }
@@ -438,6 +454,7 @@ export function ChatWorkspace() {
             onNew={handleNew}
             onSaveSop={(messageId) => void handleSaveSop(messageId)}
             restoreDraft={restoreDraft}
+            showModelSettings={modelUnavailable && owner}
             role={role}
             status={status}
           /> : <p aria-live="polite" className="onboarding-status" role="status">Opening your company workspace…</p>}

@@ -3,91 +3,112 @@
 ## 1. Decision in one sentence
 
 My Little Company is a server-side Next.js application in which **DynamoDB owns
-approved company truth**, **Amazon Bedrock creates and applies that truth**,
-**S3 preserves its canonical documents**, and **Bedrock Knowledge Bases backed
-by S3 Vectors provide a derived search path that is never authoritative on its
-own**.
+approved company truth**, **OpenAI creates live assistant output**, **private S3
+preserves source material and canonical documents**, and a **repository-backed
+index finds current approved knowledge without becoming authoritative**.
 
-This is deliberately a three-plane design:
+The active hosted design has four responsibilities:
 
-| Plane | Job | AWS service | Rule |
-|---|---|---|---|
-| Truth | Keep the current approved rule, its version, source, approver, and audit trail | DynamoDB | Only this plane decides company truth. |
-| Intelligence | Generate an answer, suggestion, conflict assessment, or SOP | Amazon Bedrock Converse | Model output is untrusted until Zod validation and human approval. |
-| Discovery | Find likely relevant approved rules | Bedrock Knowledge Bases + S3 Vectors | Every hit is reloaded from DynamoDB before it can influence an answer. |
+| Responsibility | Implementation | Rule |
+|---|---|---|
+| Truth | DynamoDB repositories | Only approved current records define company truth. |
+| Intelligence | OpenAI Responses API | Model output remains untrusted until validation and, for knowledge, human approval. |
+| Discovery | `RepositoryKnowledgeIndex` over the active memory repository | Search returns candidates; server-side eligibility still decides what may be used. |
+| Provenance and identity | Private S3 and Cognito/Auth.js | Sources stay private; identity never replaces application membership authorization. |
 
-The result is credible AWS logic without making the hackathon demo depend on a
-queue, an agent framework, a second database, or a vector database the team must
-operate.
+OpenAI File Search and embeddings are intentionally excluded from the migration.
+The salon corpus is small enough for repository-backed lexical retrieval, which
+keeps the complete approval-and-reuse proof fast and operationally simple.
 
-## 2. Hackathon architecture schema
+## 2. Active architecture
 
 ```mermaid
 flowchart LR
     U[Owner, employee, or judge] --> UI[Next.js web app]
     UI --> API[Server routes and services]
 
-    API --> AUTH[Auth.js and actor check]
+    API --> AUTH[Cognito or demo identity\nplus membership reload]
     API --> WORK[Governed memory workflow]
-
     WORK --> DDB[(DynamoDB\ntruth, versions, audit)]
-    WORK --> BR[Bedrock Runtime\nConverse]
     WORK --> S3[(Private S3\nsources and canonical docs)]
+    WORK --> IDX[Repository-backed\nknowledge index]
+    IDX --> DDB
+    WORK --> OAI[OpenAI Responses API\nlive generation]
+    API --> OBS[Structured telemetry]
 
-    S3 --> INGEST[Direct Knowledge Base ingestion]
-    INGEST --> KB[Bedrock Knowledge Base]
-    KB --> VEC[(S3 Vectors\nderived index)]
-
-    WORK --> RETRIEVE[Retrieve, hydrate, re-check]
-    RETRIEVE --> KB
-    RETRIEVE --> DDB
-    RETRIEVE --> BR
-
-    API --> OBS[Structured telemetry\nand CloudWatch logs]
-
-    subgraph Local mode
-      LMODEL[Fixture model]
-      LSTORE[Local repositories and index]
+    subgraph Explicit test or offline mode
+      FIXTURE[Fixture model]
+      LOCAL[Local repositories]
     end
-    API -.same ports.-> LMODEL
-    API -.same ports.-> LSTORE
+    API -.same ports.-> FIXTURE
+    API -.same ports.-> LOCAL
 ```
 
-The browser calls only Next.js routes. It never receives AWS credentials and
-never calls DynamoDB, S3, Bedrock, or the Knowledge Base directly.
+The browser calls only authenticated Next.js routes. It never receives the
+OpenAI API key, AWS credentials, arbitrary model identifiers, or trusted company
+and role fields.
 
 ### Main components
 
 | Component | Responsibility | Must not do |
 |---|---|---|
-| Next.js UI | Make work, review, approval, index state, and citations understandable | Decide authority or construct AWS requests |
-| Route handlers | Validate request shape, resolve the server actor, call one service | Trust browser company, role, or approval fields |
-| Domain and services | Enforce lifecycle, scope, conflict, approval, and retrieval rules | Import AWS SDK clients |
-| `ModelGateway` | Call Converse, validate/retry one malformed structured response, return safe output | Approve or persist company knowledge |
-| `MemoryRepository` | Create immutable versions, conditionally transition states, append audit events | Treat an index hit as truth |
-| `SourceRepository` | Save private source material and deterministic rendered memory documents | Expose direct S3 URLs |
-| `KnowledgeIndex` | Ingest one search document and return untrusted candidate hits | Authorize a hit or generate a final answer |
-| `Telemetry` | Record safe trace metadata, latency, prompt version, model configuration, and outcomes | Record raw secrets, tokens, or full source content |
+| Next.js UI | Explain work, review, approval, model selection, and citations | Decide authority or call OpenAI/AWS directly |
+| Route handlers | Validate input, resolve the actor, call one service | Trust browser company, role, approval, or model-ID fields |
+| Domain and services | Enforce lifecycle, scope, conflict, approval, and retrieval rules | Import provider SDK clients |
+| `ModelGateway` | Receive `companyId`, invoke one configured model, validate output, and return safe results | Approve or persist company knowledge |
+| `MemoryRepository` | Create immutable versions, transition state, list eligible records, and append audit events | Treat model output or a search score as truth |
+| `SourceRepository` | Save private source material and canonical rendered memory documents | Expose direct S3 URLs |
+| `KnowledgeIndex` | Rank current approved repository records | Authorize a result or generate a final answer |
+| `Telemetry` | Record safe trace metadata, latency, prompt version, tier, actual model ID, and outcome | Record keys, raw private content, or hidden reasoning |
 
-## 3. One interface set, two complete runtime modes
+## 3. Persistence and model selection are independent
 
-The application keeps the existing ports: `MemoryRepository`,
-`ConversationRepository`, `SourceRepository`, `KnowledgeIndex`,
-`ModelGateway`, and `Telemetry`.
+The existing ports remain: `MemoryRepository`, `ConversationRepository`,
+`SourceRepository`, `KnowledgeIndex`, `ModelGateway`, and `Telemetry`.
 
-| Mode | Used for | Adapter set | Boundary |
-|---|---|---|---|
-| `APP_MODE=local` | Development, tests, and an emergency fallback demo | Fixture model, local repositories, lexical local index | No credentials or network calls |
-| `APP_MODE=aws` | The submitted live path | Bedrock, DynamoDB, S3, and Bedrock Knowledge Base adapters | Fail fast when any AWS identifier is missing |
+`APP_MODE` selects persistence. `MODEL_PROVIDER` selects intelligence. They do
+not implicitly change one another.
 
-Do not mix individual local and AWS adapters. A partial AWS mode can make an
-answer look cloud-backed while its approved memory is still ephemeral.
+| Configuration | Purpose | Active adapter |
+|---|---|---|
+| `APP_MODE=local` | Local development and deterministic CI | Local repositories and repository index |
+| `APP_MODE=aws` | Durable hosted company state | DynamoDB repositories, private S3, and repository index |
+| `MODEL_PROVIDER=fixture` | Automated tests or explicitly labelled offline operation | Deterministic fixture gateway |
+| `MODEL_PROVIDER=openai` | Hosted and live-demo generation | OpenAI Responses gateway |
 
-Local fallback is an explicit mode switch, not a silent recovery inside AWS
-mode. A failed AWS model request must surface as a truthful error in the AWS
-demo, because silently changing to a fixture would weaken the AWS proof.
+A hosted demo must use `MODEL_PROVIDER=openai`. A model error remains a visible,
+retryable error; the application never silently changes provider, model tier, or
+fixture mode.
 
-## 4. The governing state machine
+## 4. Owner model selection
+
+Each company stores only one provider-neutral tier:
+
+```ts
+type AssistantModelTier = "FAST" | "BALANCED" | "BEST";
+```
+
+`BALANCED` is the default for existing, reset, and newly created companies. The
+server maps the tier to one allowed environment value:
+
+```text
+FAST     -> OPENAI_MODEL_FAST
+BALANCED -> OPENAI_MODEL_BALANCED
+BEST     -> OPENAI_MODEL_BEST
+```
+
+Only an owner may read or update Assistant settings. The API accepts the enum,
+not a vendor model ID. Every `ModelGateway` operation receives the trusted
+`companyId`; the OpenAI adapter loads the current company setting immediately
+before the request, resolves the allowed model server-side, and records both the
+tier and actual model ID in safe operation metadata. The next request uses a new
+selection; prior messages are never regenerated.
+
+If the selected model is unavailable, return the typed provider error rendered
+as “This assistant model is temporarily unavailable,” with Retry and an
+owner-only link to Assistant settings. Do not auto-select another tier.
+
+## 5. Governing state machine
 
 ```text
 Conversation or import
@@ -97,245 +118,191 @@ PROPOSED candidate -- Ignore --> REJECTED
         |
         | owner or scoped approver
         v
-APPROVING -- conditional DynamoDB transaction --> APPROVED current version
-                                                    |
-                                                    | index status: PENDING
-                                                    v
-                                            READY or FAILED (retryable)
+APPROVING -- conditional repository write --> APPROVED current version
 
 APPROVED current version -- explicit owner replacement --> SUPERSEDED
 APPROVED current version -- explicit owner archive ------> ARCHIVED
 ```
 
-`APPROVED` and `READY` are different truths:
-
-- `APPROVED` means the Playbook is now correct in DynamoDB.
-- `READY` means the derived semantic search copy has caught up.
-- `FAILED` means the approved Playbook record remains correct, while assistant
-  search needs a visible retry.
-
 Only an approved, current, in-scope version may appear as company-specific
 context. `PROPOSED`, `REJECTED`, `SUPERSEDED`, and `ARCHIVED` records are never
-authoritative.
+authoritative. Repository-backed indexing has no remote ingestion job: a newly
+approved current record becomes discoverable when the authoritative repository
+write succeeds. Existing index-status fields remain compatibility and audit
+metadata, not a second truth plane.
 
-## 5. Write path: conversation to governed memory
+## 6. Write path: conversation to governed memory
 
 ```mermaid
 sequenceDiagram
     participant Owner
     participant App as Next.js service
-    participant Model as Bedrock Converse
-    participant DB as DynamoDB
+    participant DB as Company repositories
+    participant Model as OpenAI Responses API
 
-    Owner->>App: Explain a business rule in normal chat
-    App->>DB: Load eligible approved context
-    App->>Model: Generate useful work using approved context
-    Model-->>App: Answer with permitted memory citations
-    App->>Model: Extract structured candidate from the owner statement
-    Model-->>App: Candidate JSON
-    App->>App: Zod validation; one repair attempt at most
-    App->>DB: Save PROPOSED candidate with source reference
-    App-->>Owner: Answer plus Suggested company knowledge card
+    Owner->>App: Send message plus stable idempotency key
+    App->>DB: Look up the key in the trusted company conversation
+    alt completed turn already exists
+        DB-->>App: Stored owner and assistant messages plus structured result
+        App-->>Owner: Replay the saved result without a new model call
+    else new or incomplete turn
+        App->>DB: Load eligible approved context
+        App->>Model: Generate useful work using approved context
+        Model-->>App: Schema-constrained output with permitted citations
+        App->>App: Zod, grounding, and business-rule validation
+        App->>DB: Conditionally save owner message under the key
+        App->>DB: Save source and assistant message with SOP or grounded answer
+        opt Marketing may contain durable owner knowledge
+            App->>Model: Extract and classify one reviewable suggestion
+            Model-->>App: Schema-constrained candidate output
+            App->>DB: Save PROPOSED candidate with source reference
+        end
+        App-->>Owner: Live answer and any Suggested company knowledge card
+    end
 ```
 
-The assistant's new recommendation is not a policy. The system extracts only
-from owner-supported content, preserves an absent rationale as absent, and shows
-the suggestion for explicit human review.
+OpenAI Structured Outputs constrain the response shape; Zod and domain checks
+still enforce product rules. The assistant's recommendation is not policy. The
+system preserves missing rationale as missing and requires explicit human review.
+A provider failure during initial generation leaves no orphan owner turn. If a
+later suggestion step fails after the answer was saved, the same request key can
+resume that suggestion without duplicating the conversation.
 
-## 6. Approval and indexing: a deliberately split path
+## 7. Approval, retrieval, and grounded generation
 
-```mermaid
-sequenceDiagram
-    participant Owner
-    participant Review as Review service
-    participant DB as DynamoDB
-    participant Index as Index service
-    participant S3 as Private S3
-    participant KB as Bedrock Knowledge Base
-
-    Owner->>Review: Approve, edit, replace, or add an exception
-    Review->>DB: Conditional transaction: candidate, memory, version, audit
-    DB-->>Review: APPROVED + PENDING
-    Review-->>Owner: Approved in Playbook; search is updating
-    Owner->>Index: Begin or retry adding to assistant search
-    Index->>S3: Write immutable version and current search document
-    Index->>KB: Ingest current document with small metadata set
-    KB-->>Index: Indexed or safe failure
-    Index->>DB: Set READY or FAILED; append audit
-    Index-->>Owner: Available to assistants or Needs attention
-```
-
-### Why this split is important
-
-Approval must return promptly after the DynamoDB transaction. The present code
-waits for Knowledge Base indexing inside the approval request; its documented
-polling loop can wait roughly 18 seconds before it reports a failure. That makes
-the most important owner action feel slow and couples an approval confirmation to
-an eventually consistent search service.
-
-For the hackathon, use a second authenticated index request initiated by the UI
-immediately after successful approval. It keeps the architecture simple and
-reliable on a serverless host: no SQS, Step Functions, or background Lambda is
-needed just to prove the demo. The UI already has the right plain-language states
-and retry action.
-
-When the active workflow knows the exact newly approved memory ID, it may pass
-that one record as a clearly labelled structured bridge while indexing is pending.
-Generic employee search must wait for `READY`; it must not scan arbitrary
-approved records to imitate semantic retrieval.
-
-## 7. Retrieval and grounded generation
+Approval writes the source-backed immutable version and audit event to the
+authoritative repository. In AWS mode, S3 retains the private source and
+canonical rendered document, but no external vector ingestion gates retrieval.
 
 ```mermaid
 sequenceDiagram
     participant User
     participant App as Assistant service
-    participant KB as Knowledge Base
-    participant DB as DynamoDB
-    participant Model as Bedrock Converse
+    participant Index as Repository knowledge index
+    participant DB as Memory repository
+    participant Model as OpenAI Responses API
 
-    User->>App: Ask a business question
-    App->>KB: Retrieve using query and company metadata filter
-    KB-->>App: Untrusted memory IDs, versions, scores, metadata
+    User->>App: Ask a company question
+    App->>Index: Search within trusted company and requested scope
+    Index->>DB: List current approved records
+    Index-->>App: Ranked candidate memory IDs and versions
     App->>DB: Reload each current record and version
-    App->>App: Re-check company, status, current version, scope, role, sensitivity, index state
+    App->>App: Re-check company, status, scope, role, sensitivity, and version
     App->>Model: Send only validated approved context
-    Model-->>App: Answer with memory citation markers
+    Model-->>App: Structured answer with memory citations
     App->>App: Remove unknown citations and record quality failure
     App-->>User: Direct answer, source title, and approval date
 ```
 
-The Knowledge Base performs discovery, not authorization. Application hydration
-is mandatory because old indexed content, bad metadata, or a cross-company hit
-must never become policy merely because it ranked well.
+The index performs discovery, not authorization. Company, role, department,
+sensitivity, status, and current-version checks remain central even when the
+repository query was already scoped. If nothing relevant survives, the service
+returns the standard no-approved-context answer rather than inviting the model
+to invent a company rule.
 
-For the small salon corpus, send a company and approved-status filter to the
-Knowledge Base, retrieve a bounded candidate set, and make all role, department,
-sensitivity, version, and `READY` decisions after DynamoDB hydration. This avoids
-relying on complex vector-store-specific filters for access control. In
-particular, do not make `listContains` role filtering a security dependency when
-using S3 Vectors; filter capability varies by vector store.
+## 8. OpenAI integration
 
-## 8. AWS implementation shape
+`OpenAIModelGateway` uses the Responses API for marketing work, candidate
+extraction, conflict classification, SOP generation, and employee answers.
+Every call:
 
-### Bedrock Runtime
-
-Use `Converse` behind `ModelGateway` for marketing responses, memory extraction,
-conflict classification, SOP generation, and employee answers. Every call:
-
-- receives a model ID or inference profile from environment configuration;
-- sets an explicit `maxTokens` value, timeout, and bounded retry policy;
+- receives the trusted `companyId` and resolves the company's current tier;
 - loads a versioned prompt from `prompts/`;
-- treats retrieved and imported text as data delimited from instructions;
-- validates structured output with Zod and permits one repair attempt; and
-- records safe operation metadata without raw private content.
+- requests strict schema-constrained output for structured operations;
+- treats retrieved and imported content as delimited untrusted data;
+- validates output with Zod and existing citation/business rules;
+- permits at most one bounded retry for timeouts, rate limits, and transient
+  provider failures, plus the existing single safe repair path where applicable;
+- uses an explicit timeout and output limit; and
+- records prompt version, tier, actual model ID, latency, tokens, and safe status.
 
-The live model must be confirmed available in the selected region before demo
-day. The current Nova Lite quota blocker is a deployment prerequisite, not a
-reason to hardcode a replacement into domain logic.
+The API key and tier-to-model mapping are Functions-runtime secrets/configuration.
+Neither is stored on the company profile or sent to the browser.
+
+### Provider retry and user retry are different boundaries
+
+The OpenAI gateway owns one short transport retry for a timeout, rate limit, or
+transient provider failure. It uses the same company tier and model; it never
+changes configuration. If that still fails, the API returns a typed error and
+the browser restores the user's draft.
+
+The conversation service owns the later user-visible Retry action:
+
+1. The browser reuses the original idempotency key and message text.
+2. Reusing a key with different text returns `CONFLICT` rather than attaching a
+   new answer to an old source.
+3. An initial model failure has not persisted an owner message, so Retry starts
+   the same logical turn cleanly.
+4. If the completed assistant message already exists, the repository returns
+   its stored SOP or grounded-answer payload and does not invoke OpenAI again.
+5. DynamoDB message replay uses a strongly consistent base-table query so an
+   immediate Retry cannot miss the completed result and append a duplicate.
+
+This boundary makes retry truthful: the user either receives the original saved
+result or one new attempt for the same request, never a hidden fixture response.
+
+## 9. Durable hosting
 
 ### DynamoDB
 
-One table is sufficient for the demo. It holds company profile, memberships,
-conversations, candidates, memory records, immutable versions, sources, and
-audit events. Approval is an idempotent conditional transaction that prevents a
-double click or concurrent reviewer from creating two current versions.
+One table holds company profiles and assistant tier, memberships,
+conversations, messages, candidates, memory records, immutable versions,
+sources, audit events, onboarding state, and waitlist entries. Assistant
+messages retain the structured SOP or grounded-answer data needed to reopen or
+replay the exact UI result. Message idempotency markers and strongly consistent
+replay reads prevent duplicate assistant turns. Approval remains an idempotent
+conditional transaction so concurrent clicks cannot create two current versions.
 
 ### S3
 
-Keep all objects private and company-prefixed. Store:
+Objects remain encrypted, private, and company-prefixed:
 
 ```text
 sources/{companyId}/{sourceId}.json
-memories/{companyId}/{memoryId}/v{version}.md       # immutable audit copy
-search/{companyId}/{memoryId}/current.md            # sole KB search document
+imports/{companyId}/{sourceId}
+memories/{companyId}/{memoryId}/v{version}.md
 ```
 
-The immutable version document preserves history. The stable `current.md` URI is
-the only document ingested for semantic search; its metadata contains the
-current version. This prevents every amendment from leaving an additional stale
-vector that must later be filtered out.
-
-### Knowledge Base and S3 Vectors
-
-Use the configured S3 data source and direct document ingestion after the current
-search document is written. S3 Vectors is the lowest-operations choice for this
-hackathon. Keep metadata compact and filterable:
-
-```text
-companyId, memoryId, version, status, scopeLevel,
-organizationalUnitId, memoryType, sensitivity
-```
-
-Amazon Bedrock currently limits S3 Vectors Knowledge Base custom metadata to 1
-KB and 35 metadata keys. This design uses well below both limits. The KB service
-role needs only the S3 read permissions, embedding-model invocation, and S3
-Vectors operations required by the configured Knowledge Base. The web runtime
-role separately needs the direct-ingestion and retrieval actions it actually
-uses.
+S3 is provenance and durable document storage, not the retrieval index. The
+browser receives application routes and safe source labels, never direct bucket
+URLs.
 
 ### Identity and observability
 
-Cognito/Auth.js identity and application-owned memberships stay outside the
-main demo diagram because they support, rather than define, the memory proof.
-Every route still resolves an active membership server-side. Emit structured
-events with a trace ID, operation, company pseudonym, model configuration,
-latency, status, and memory IDs. CloudWatch is enough for the competition; do
-not add a second observability product before the AWS smoke test passes.
+Cognito/Auth.js establishes identity; the application reloads active membership
+and grants for every request. Emit structured events with a trace ID,
+pseudonymous company identifier, operation, prompt version, tier, actual model
+ID, latency, token counts, and safe error code. Do not log raw content or keys.
 
-## 9. Architecture critique and improvements
+## 10. Explicit non-goals
 
-| Finding | Evidence in the current implementation | Improvement in this target architecture |
-|---|---|---|
-| The main architecture tells too many stories at once. | The previous primary diagram gave equal visual weight to Apify, Langfuse, auth, and future services. | Center the one judge-visible loop: chat, approval, DynamoDB, S3, Knowledge Base, retrieval, Bedrock. Keep imports, MCP, and rich onboarding at extension boundaries. |
-| Approval is coupled to slow indexing. | `MemoryService.indexMemory` runs during approval; `BedrockKnowledgeIndex.waitUntilIndexed` polls up to 24 times. | Return `APPROVED/PENDING` from the transaction, then index through a separate route with a visible retry state. |
-| Each memory version can create a stale search vector. | The current S3 key and Knowledge Base document identity include `v{version}`. | Preserve immutable version files, but ingest only one stable current search document per memory. |
-| Retrieval is secure only if hydration remains non-negotiable. | The code correctly reloads DynamoDB records after Knowledge Base retrieval. | Keep hydration central, test it with stale version, wrong company, wrong department, and wrong role fixtures. |
-| S3 Vectors should reduce operations, not weaken authorization. | Existing retrieval adds a role-list metadata filter. | Treat KB filtering as a relevance optimization. Enforce access after hydration, and validate optional filters against the chosen vector-store capability. |
-| AWS proof is still externally blocked. | The real smoke test lacks provisioned resources and the configured model quota is zero. | Treat model capacity, a private S3 bucket, DynamoDB table, Knowledge Base/data source, IAM roles, and `pnpm smoke:aws` as one pre-demo release gate. |
-| The current composition root is a single large dependency factory. | `src/server/container.ts` constructs every adapter, including optional integrations. | Keep it for the hackathon, but split it into local and AWS factory functions before adding another integration. Do not introduce a DI framework. |
+- No OpenAI File Search, embedding pipeline, or external vector database.
+- No silent provider, model-tier, or fixture fallback.
+- No browser-supplied model IDs or client-side OpenAI calls.
+- No autonomous approval, external publishing, or model-written company truth.
+- No new primary-navigation item for model configuration.
+- No private ChatGPT/MCP acceptance requirement for this web migration; that
+  integration remains a later checkpoint.
 
-## 10. Explicit non-goals for the live architecture
+## 11. Release proof
 
-- No Bedrock Agents, AgentCore, multi-agent orchestration, or action groups.
-- No event bus, queue, workflow engine, or infrastructure-as-code requirement
-  before the demo works.
-- No second operational datastore, cache, or vector database.
-- No autonomous approval, external publishing, or client-side AWS access.
-- No production-scale reconciliation worker. The explicit index retry is enough
-  for the hackathon; reconciliation becomes a follow-up once real usage exists.
+Before presenting the hosted web demo:
 
-## 11. Judge-facing proof and release gate
+1. `smoke:openai` completes a minimal schema-constrained request with every
+   configured tier; a failing model is not exposed in the UI.
+2. The owner changes the tier in Workspace and the next operation records and
+   uses its configured model ID.
+3. The live model creates the marketing response and suggestion, while the
+   suggestion remains `PROPOSED` until a human approves it.
+4. Approval persists the current version, rationale, source, and approver in
+   DynamoDB and its canonical document in private S3.
+5. A later Marketing, Operations, and Employee request finds the approved rule
+   through repository retrieval and cites it.
+6. Proposed, superseded, wrong-company, and wrong-role records remain excluded.
+7. A provider failure restores the same draft and request key, shows Retry, and
+   never returns fixture content; a completed retry replay retains its SOP or
+   grounded-answer card without another model call.
 
-Before presenting AWS mode, demonstrate these facts in the live app and console:
-
-1. A Bedrock Converse request creates the marketing response and structured
-   suggestion, but the suggestion is still `PROPOSED`.
-2. Owner approval produces a DynamoDB current version and an audit event.
-3. S3 contains the canonical current search document.
-4. Direct Knowledge Base ingestion reaches `READY`, backed by S3 Vectors.
-5. A later Marketing, Operations, or Employee request retrieves the rule,
-   hydrates it from DynamoDB, and cites it.
-6. Proposed, superseded, wrong-company, and wrong-role records are rejected even
-   if a retrieval fixture returns them.
-7. An indexing failure says “Approved in the Playbook, but not yet available to
-   assistants,” and offers retry rather than faking success.
-
-`pnpm smoke:aws` and `pnpm test:e2e:aws` are the final evidence. Until they pass
-against provisioned resources, the local demo remains valuable but the AWS path
-must be described as implemented and unverified, not complete.
-
-## 12. Implementation status
-
-The port boundaries, Bedrock model gateway, DynamoDB/S3 adapters, direct
-Knowledge Base ingestion, retrieval hydration, local adapter set, and smoke-test
-scripts already exist. The refreshed architecture deliberately identifies two
-follow-up changes before AWS-mode demo hardening:
-
-1. decouple approval confirmation from Knowledge Base polling; and
-2. change semantic ingestion from one document per immutable version to one
-   stable current document per memory.
-
-Those are targeted reliability improvements, not a request to expand product
-scope. The existing real-AWS resource and quota blockers remain the prerequisite
-for proving the path end to end.
+The release gate is `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`,
+`pnpm test:e2e`, the three-tier OpenAI smoke, and one complete hosted Balanced
+salon journey. Private ChatGPT acceptance follows separately.

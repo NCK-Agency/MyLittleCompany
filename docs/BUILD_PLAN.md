@@ -9,9 +9,10 @@ The sequence is deliberately vertical:
 1. Make the product understandable.
 2. Make the memory rules correct.
 3. Make the local demo reliable.
-4. Wire AWS without changing the flow.
-5. Harden trust, security, and presentation.
-6. Add optional integrations only when the core is stable.
+4. Add live OpenAI generation without changing the governed flow.
+5. Add durable AWS persistence and identity behind the existing ports.
+6. Harden trust, security, and presentation.
+7. Add optional integrations only when the core is stable.
 
 ## 2. Phase 0 — Repository foundation
 
@@ -82,18 +83,21 @@ pnpm build
 
 The full salon story works locally from reset to employee answer, and no proposed memory appears as authoritative context.
 
-## 4. Phase 2 — Amazon Bedrock model integration
+## 4. Phase 2 — OpenAI live-model integration
 
 ### Deliverables
 
-- Bedrock `ModelGateway` adapter.
-- Configurable model ID or inference profile.
+- OpenAI Responses API `ModelGateway` adapter.
+- `companyId` on every model operation so the gateway resolves the company's
+  current provider-neutral tier.
+- Server-only Fast, Balanced, and Best tier-to-model mappings.
 - Prompt loader from `prompts/`.
-- Structured-output parsing and Zod validation.
+- Strict Structured Outputs plus Zod and business-rule validation.
 - One repair attempt on invalid output.
-- Timeout, bounded retry, and typed errors.
-- Prompt version and telemetry metadata.
-- Local model adapter remains available.
+- Explicit timeout, one transient retry, and typed errors.
+- Prompt version, tier, actual model ID, token, and latency metadata.
+- Fixture model remains available only for tests and labelled offline mode.
+- Owner-only Assistant settings in Workspace, defaulting to Balanced.
 
 ### Implementation order
 
@@ -105,7 +109,9 @@ The full salon story works locally from reset to employee answer, and no propose
 
 ### Exit gate
 
-The AWS model path reproduces the salon flow with valid structured outputs and safe failures.
+All three configured tiers pass a live smoke request. The hosted path reproduces
+the salon flow with real model output, valid structured results, and truthful
+failures without a silent model or fixture fallback.
 
 ## 5. Phase 3 — DynamoDB and S3 persistence
 
@@ -126,24 +132,23 @@ The AWS model path reproduces the salon flow with valid structured outputs and s
 - Reset restores only the demo company.
 - S3 objects are private.
 
-## 6. Phase 4 — Bedrock Knowledge Base retrieval
+## 6. Phase 4 — Repository-backed retrieval
 
 ### Deliverables
 
-- Knowledge Base adapter.
-- Direct ingestion of approved memory versions.
-- Metadata for company, type, roles, status, version, and sensitivity.
-- Retrieval with company and role filters where supported.
-- DynamoDB hydration and eligibility verification after index retrieval.
+- `RepositoryKnowledgeIndex` over the active local or DynamoDB memory repository.
+- Deterministic lexical ranking over current approved structured records.
+- Company, role, department, sensitivity, status, and current-version checks
+  after every candidate lookup.
 - Source citations.
-- Separate index status with retry.
-- Real-AWS smoke test.
+- Immediate retrieval readiness after the authoritative approved write.
+- Private S3 canonical documents retained for provenance, not search.
 
 ### Exit gate
 
 - Approved 15% decision is retrieved and influences Marketing, Operations, and Employee modes.
 - Proposed, rejected, superseded, and cross-company records are excluded.
-- Index failure is visible and retryable.
+- Irrelevant queries return no company context rather than arbitrary records.
 
 ## 7. Phase 5 — Conflict, trust, and security hardening
 
@@ -179,7 +184,8 @@ The malicious import fixture cannot modify approved memory, and a 25% conflictin
 
 ### Exit gate
 
-A presenter can run the complete demo without developer tools, database editing, or manual recovery.
+A presenter can select a model tier and run the complete live-OpenAI web demo
+without developer tools, database editing, or fabricated output.
 
 ## 9. Phase 7 — Optional integrations
 
@@ -194,7 +200,7 @@ Only begin after every P0 issue is complete.
 ### Langfuse or AWS-native observability
 
 - Implement one primary Telemetry adapter.
-- Trace extraction, retrieval, generation, approval, and indexing.
+- Trace extraction, retrieval, generation, approval, and assistant-search readiness.
 
 ### Antitech
 
@@ -231,7 +237,8 @@ Do not cut:
 - Source and rationale.
 - The cross-role reuse demo.
 - Clear failure state.
-- AWS Bedrock and Knowledge Base path for the submitted demo.
+- Live OpenAI generation and the three-tier model selection.
+- Repository-backed approved-only retrieval.
 
 ## 11. Implementation review questions
 
@@ -241,6 +248,6 @@ After every phase, answer:
 - Can unapproved content influence an authoritative answer?
 - Can a cross-company record leak through this path?
 - Is rationale preserved without being invented?
-- Is indexing state reported truthfully?
+- Is assistant-search readiness reported truthfully?
 - Does the demo prove reuse across at least two roles?
 - Did this phase add anything outside the north-star question?

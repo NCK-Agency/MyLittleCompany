@@ -16,7 +16,9 @@ export class LocalSourceRepository implements SourceRepository {
   async saveConversationSource(companyId: string, source: SourceReference): Promise<SourceReference> {
     void companyId;
     const state = getDemoState();
-    state.sources.push(source);
+    const existingIndex = state.sources.findIndex((item) => item.sourceId === source.sourceId);
+    if (existingIndex >= 0) state.sources[existingIndex] = source;
+    else state.sources.push(source);
     saveDemoState(state);
     return source;
   }

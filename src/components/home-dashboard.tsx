@@ -12,6 +12,7 @@ import type {
 } from "@/domain/types";
 import { isOwner } from "@/domain/authorization";
 import { apiRequest } from "@/lib/api";
+import { AssistantSettingsPanel } from "./assistant-settings";
 import { BrandMark } from "./brand-mark";
 import { KnowledgePageDialog } from "./knowledge-page-dialog";
 import type { OnboardingSessionView } from "./onboarding/onboarding-types";
@@ -148,6 +149,8 @@ export function HomeDashboard() {
         <label className="field-label">Description<textarea className="text-input min-h-24" value={description} onChange={(event) => setDescription(event.target.value)} /></label>
         <button className="primary-button" onClick={() => void saveProfile()} type="button">Save profile</button>
       </section>}
+
+      {owner && <AssistantSettingsPanel />}
 
       <section className="mt-8">
         <div className="flex flex-wrap items-end justify-between gap-4">

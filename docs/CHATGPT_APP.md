@@ -20,7 +20,7 @@ approval remains inside My Little Company.
 
 ### `search` — read only
 
-Searches current, approved, indexed company knowledge visible to the linked My
+Searches current, approved, repository-searchable company knowledge visible to the linked My
 Little Company member. Use it before making company-specific claims.
 
 ### `fetch` — read only
@@ -32,7 +32,7 @@ rationale, version metadata, and canonical Playbook URL.
 
 Creates a source-backed suggestion for Review. It is idempotent and
 non-destructive, but it is still a write and should require confirmation. It
-cannot approve or index knowledge.
+cannot approve knowledge or bypass repository eligibility checks.
 
 ## Production prerequisites
 
@@ -88,7 +88,7 @@ Expected behavior:
 - The suggestion result is `PROPOSED` and links to Review.
 - Prompt 4 says no: a proposal is not approved truth.
 - The suggestion remains absent from search until a scoped reviewer approves it
-  and indexing reaches `READY`.
+  and repository search reports `READY`.
 
 ## Access checks
 

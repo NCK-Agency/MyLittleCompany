@@ -224,9 +224,8 @@ product-only view; when a decision changes, add or supersede an ADR there first.
   waitlist that creates no identity or company access; existing owners remain the
   only path for new accounts through People & access invitations.
 - Public waitlist durability is configured independently from the assistant
-  runtime. Netlify uses DynamoDB-backed waitlist storage even while the product
-  is visibly running its deterministic local/demo assistant path; file-backed
-  waitlist storage is only for tests and disposable private previews.
+  runtime. Netlify uses DynamoDB-backed waitlist storage; file-backed waitlist
+  storage is only for tests and disposable private previews.
 - ChatGPT, Codex, Claude Code, Gemini CLI, Kiro, and other compatible clients may
   connect through the remote tool-only MCP endpoint. The
   OAuth bridge records consent but never grants company access; every tool call
@@ -234,15 +233,27 @@ product-only view; when a decision changes, add or supersede an ADR there first.
   or create Review suggestions, never approve company truth.
 - Signed-in owners onboard through one proof-first loop: choose a real question,
   paste text or select one ChatGPT conversation locally, approve suggested company
-  knowledge, and receive a cited answer from that import. Search indexing remains
-  a separate visible state; imported context never creates folders or silently
-  changes the Company profile.
-- The complete product and demo run in credential-free local mode with
-  deterministic assistant behavior and repository-backed lexical search.
-- Approved structured memory remains authoritative; search results are still
-  hydrated and revalidated before assistant use.
-- DynamoDB, S3, and Cognito are optional hosting adapters, not part of the core
-  product claim or a competition requirement.
+  knowledge, and receive a cited answer from that import. Repository search
+  becomes available from the approved structured record; imported context never
+  creates folders or silently changes the Company profile.
+- The hosted web demo uses the OpenAI Responses API for live assistant output.
+  The fixture model is selected explicitly for automated tests and a clearly
+  labelled offline mode only; a provider failure never silently falls back to a
+  canned response.
+- Owners select one company-wide assistant tier in Workspace settings: Fast,
+  Balanced, or Best quality. The stored setting is provider-neutral; server-only
+  environment configuration maps each tier to an allowed OpenAI model ID.
+- Approved structured memory remains authoritative. Repository-backed retrieval
+  searches current approved records and revalidates company, role, scope,
+  sensitivity, and version before any record reaches the model. OpenAI File
+  Search, embeddings, Bedrock Knowledge Bases, and S3 Vectors are not part of the
+  active demo architecture.
+- DynamoDB, private S3, and Cognito remain the durable hosted persistence,
+  provenance, and identity adapters. They are independent of the selected model
+  provider and do not change the core product claim.
+- The web application and complete salon loop are the current release gate. The
+  private ChatGPT/MCP connection remains implemented but is a later acceptance
+  checkpoint rather than a blocker for this migration.
 - Website onboarding through Apify is optional after the memory loop works.
 - Voice onboarding through Agora is a stretch feature.
 - Notion is an optional import/export destination, not the source of truth.

@@ -22,6 +22,11 @@ Use separate prompt templates and schemas for:
 
 Do not use one giant prompt for all operations.
 
+Every operation input includes the trusted `companyId`. In live mode the
+`OpenAIModelGateway` uses it to load the company's current assistant tier and
+map that tier to an allowed server-side model ID before calling the Responses
+API. The browser never supplies a vendor model ID.
+
 ## 3. Prompt versioning
 
 Every prompt file has a semantic or date-based version in its front matter or exported constant.
@@ -30,7 +35,7 @@ Store with each operation:
 
 - Prompt name.
 - Prompt version.
-- Model ID or inference profile.
+- Provider-neutral tier and actual model ID.
 - Timestamp.
 - Trace ID.
 - Input source IDs.
@@ -132,12 +137,13 @@ Do not add speculative company facts to the query.
 
 ### Eligibility
 
-The index returns candidates, not final authority. Hydrate each hit from the structured repository and verify:
+The repository-backed index returns candidates, not final authority. Reload each
+hit from the structured repository and verify:
 
 - Same company.
 - Current approved status.
 - Current version.
-- Ready index state or explicit safe fallback.
+- Ready index state.
 - Role access.
 - Sensitivity access.
 
@@ -244,14 +250,41 @@ Source: Promotional discounts must not exceed 15% · approved [date]
 
 For each structured operation:
 
-1. Call the model with explicit JSON-only instructions and a schema summary.
-2. Parse the response.
-3. Validate with Zod.
-4. If invalid, run one repair attempt using the validation errors and original output.
-5. If still invalid, return a safe typed error.
-6. Never persist partially parsed output.
+1. Call the OpenAI Responses API with strict schema-constrained Structured
+   Outputs derived from the application schema.
+2. Handle a provider refusal explicitly; a refusal is not a schema result.
+3. Parse the completed structured response.
+4. Validate it again with Zod and domain-specific business rules.
+5. If validation still fails, run at most one safe repair attempt using the
+   validation errors and original output.
+6. If repair fails, return a safe typed error.
+7. Never persist partially parsed output.
 
 Do not rely on string slicing or permissive `JSON.parse` without validation.
+
+## 11.1 Provider failures and retries
+
+- Use an explicit timeout and output limit for every request.
+- Retry at most once for timeouts, rate limits, and transient provider failures.
+- Treat that gateway retry as separate from the user's later Retry action. The
+  gateway retry stays on the same tier and model inside one server operation.
+- Do not retry validation, authorization, or safety errors as transport errors.
+- If the selected model is unavailable, return a typed error that the UI renders
+  as “This assistant model is temporarily unavailable.”
+- Never change tier, choose a fallback model, or switch to fixture output
+  automatically. The fixture gateway is explicit test/offline configuration.
+- Restore the original draft and idempotency key after a failed server operation.
+  Reject a reused key whose request text changed.
+- Persist validated SOP and grounded-answer data with the assistant message. A
+  completed user retry replays that stored structure instead of regenerating it.
+
+## 11.2 Company model tiers
+
+- `FAST`, `BALANCED`, and `BEST` are company-wide owner choices.
+- `BALANCED` is the default and reset value.
+- Server configuration maps each tier to an allowed OpenAI model ID.
+- A changed tier applies on the next operation and does not rewrite prior work.
+- Safe telemetry records the selected tier and actual model ID used.
 
 ## 12. Prompt-injection treatment
 
@@ -285,6 +318,9 @@ Create deterministic tests or evaluation fixtures for:
 10. SOP generation → structured, cites approved rule, remains unapproved draft.
 11. Index returns a memory from another company → discarded.
 12. Model cites an unknown memory ID → citation removed and quality failure logged.
+13. Owner changes Balanced to Fast → the next operation uses the configured Fast model.
+14. Employee or arbitrary model-ID update → rejected before provider invocation.
+15. Selected model is unavailable → one safe retry, then a truthful retryable error with no fixture response.
 
 ## 14. Quality metrics
 

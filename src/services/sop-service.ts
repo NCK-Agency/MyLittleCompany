@@ -21,12 +21,15 @@ export class SopService {
   ): Promise<{ sop: SopDraft; candidate?: MemoryCandidate }> {
     if (!canAccess(actor, "READ", scope)) throw appError("FORBIDDEN");
     const approved = await this.retrieval.retrieve(request, actor, ["OPERATIONS"], scope);
-    const generated = await this.model.generateSop({ request, approvedMemories: approved });
-    const sop = sopDraftSchema.parse({
-      ...generated,
-      sourceMemories: generated.sourceMemories.filter((source) => approved.some((memory) =>
-        memory.record.id === source.memoryId && memory.version.version === source.version)),
-    });
+    const generated = await this.model.generateSop({ companyId: actor.companyId, request, approvedMemories: approved });
+    const sop: SopDraft = {
+      ...sopDraftSchema.parse({
+        ...generated,
+        sourceMemories: generated.sourceMemories.filter((source) => approved.some((memory) =>
+          memory.record.id === source.memoryId && memory.version.version === source.version)),
+      }),
+      metadata: generated.metadata,
+    };
     if (sop.sourceMemories.length === 0) throw appError("NO_APPROVED_CONTEXT");
     if (!saveAsSuggestion) return { sop };
     if (!canAccess(actor, "SUGGEST", scope)) throw appError("FORBIDDEN");
@@ -53,8 +56,8 @@ export class SopService {
       relation: "UNRELATED",
       relatedMemoryIds: sop.sourceMemories.map((source) => source.memoryId),
       status: "PROPOSED",
-      extractionPromptVersion: "operations-assistant-1.0.0",
-      modelId: "model-gateway",
+      extractionPromptVersion: generated.metadata?.promptVersion ?? "operations-assistant-1.0.0",
+      modelId: generated.metadata?.modelId ?? "model-gateway",
       createdBy: actor.userId,
       createdAt: now,
     });

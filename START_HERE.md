@@ -34,24 +34,26 @@ Implement Phase 0 and Phase 1:
 Do not add AWS integration yet. Do not add authentication, voice, website import, or optional sponsor integrations. Keep the UI polished and demoable. Record assumptions and verification results in PLANS.md.
 ```
 
-## Second Codex prompt: wire AWS
+## Second Codex prompt: add live OpenAI and durable hosting
 
 Use this only after the local vertical slice works:
 
 ```text
 Read AGENTS.md, PLANS.md, docs/ARCHITECTURE.md, docs/DATA_MODEL.md, docs/AI_BEHAVIOR.md, and docs/SECURITY.md.
 
-Implement the AWS adapters behind the existing interfaces without changing the user flow:
-- Amazon Bedrock model gateway using the AWS SDK for JavaScript v3,
+Implement live generation and durable hosting behind the existing interfaces without changing the governed user flow:
+- OpenAI Responses API model gateway with strict Structured Outputs and Zod validation,
+- companyId on every model operation so the gateway can resolve owner-selected Fast, Balanced, or Best quality tiers,
+- owner-only Assistant settings inside Workspace, defaulting companies and demo reset to Balanced,
 - DynamoDB repositories for company, conversation, candidate, memory, version, and audit data,
 - S3 source and rendered-memory storage,
-- Bedrock Knowledge Base retrieval scoped by company and role metadata,
-- direct ingestion of an approved rendered memory document,
-- retryable indexing state and failure handling,
+- repository-backed approved-memory retrieval over the active local or DynamoDB repository,
+- server-side company, role, department, sensitivity, status, and version checks after retrieval,
+- truthful provider failure and retry handling with no silent fixture or model-tier fallback,
 - source citations in agent responses,
-- environment validation and a real-AWS smoke-test script.
+- environment validation and a live OpenAI smoke script covering all configured tiers.
 
-Keep local adapters working. Use environment variables, never hardcode resource IDs, and never expose AWS credentials to the browser. Update tests and documentation. Run all verification commands before stopping.
+Keep local adapters and deterministic fixture tests working. Use environment variables, never hardcode vendor model IDs in domain logic, and never expose OpenAI or AWS credentials to the browser. OpenAI File Search, embeddings, and a remote vector store are out of scope. Update tests and documentation. Run all verification commands before stopping.
 ```
 
 ## Third Codex prompt: demo hardening

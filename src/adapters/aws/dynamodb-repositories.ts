@@ -242,6 +242,7 @@ export class DynamoRepositories implements CompanyRepository, ConversationReposi
       TableName: this.tableName,
       KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
       ExpressionAttributeValues: { ":pk": messagePk(companyId, conversationId), ":prefix": "MESSAGE#" },
+      ConsistentRead: true,
     }));
     return (result.Items ?? []).map(parseMessage);
   }
