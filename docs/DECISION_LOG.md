@@ -41,6 +41,13 @@ an old decision to hide a reversal: mark it superseded and add the replacing ADR
 | ADR-028 | Client-neutral MCP reuses membership authorization through a consent-only OAuth broker | Integrations |
 | ADR-029 | Onboarding proves one imported fact before expanding connector breadth | Product architecture |
 | ADR-030 | Pool AWS resources while company-prefixing every business-data partition | Security architecture |
+| ADR-031 | Keep public registration closed behind a waitlist and owner invitations | Access |
+| ADR-032 | Superseded: remove Bedrock and make the complete demo local-first | Architecture |
+| ADR-033 | Keep the public landing page business-neutral | Product story |
+| ADR-034 | Separate Cognito company sign-in from seeded demo access | Access experience |
+| ADR-035 | Restore the hosted AWS and private ChatGPT demo path | Deployment |
+| ADR-036 | Align the public landing story with the closed waitlist | Product story |
+| ADR-037 | Keep public waitlist persistence independent from assistant runtime mode | Deployment |
 
 ## Standing boundaries
 
@@ -52,8 +59,9 @@ MVP work unless a new ADR explicitly supersedes them:
   demonstration vertical, not a permanent product limitation.
 - Primary navigation: **Home, Chat, Review, Playbook**.
 - Required implementation baseline: strict TypeScript, Next.js App Router,
-  React, Tailwind CSS, pnpm, Zod, AWS SDK v3, Bedrock, Bedrock Knowledge Bases,
-  DynamoDB, and S3.
+  React, Tailwind CSS, pnpm, Zod, deterministic fallback behavior, and the
+  complete AWS adapter set for the hosted demo: Bedrock, Bedrock Knowledge
+  Bases, DynamoDB, S3, and Cognito.
 - The core proof is the complete governed-memory loop, not feature breadth.
 - Real AWS and Cognito smoke validation remains pending until the deployment
   resources and external accounts are available.
@@ -68,14 +76,17 @@ source of truth.
 
 | Surface | Accepted purpose | Primary action or boundary |
 |---|---|---|
-| `/` | Public statement-led landing page | Explain the promise, trust loop, and salon proof; open Marketing demo |
+| `/` | Public statement-led landing page | Explain the promise and trust loop with company-neutral proof; start a Marketing project |
 | `/workspace` | Demo-company home and controls | Edit the company profile, inspect recent knowledge, and reset demo state |
 | `/chat` | Marketing, Operations, and Employee work | Work naturally while approved context and suggestions remain visible |
 | `/review` | Human approval inbox | Approve, edit, or ignore suggested company knowledge |
 | `/playbook` | Current approved company truth | Browse, source-check, and explicitly version approved knowledge |
+| `/waitlist` | Public early-access request | Collect contact details without creating an account or membership |
+| `/login` | Invited company-account access | Hand authentication and recovery to Cognito managed login |
+| `/login-demo` | Credential-free local access | Choose a clearly labelled seeded demo identity |
 
 The landing narrative order is also fixed: **promise → problem → governed-memory
-loop → human trust boundary → salon proof → live demo action**. Pricing tables,
+loop → human trust boundary → company-neutral proof → project action**. Pricing tables,
 generic testimonials, broad feature inventories, and speculative integrations do
 not belong on the MVP landing page.
 
@@ -116,35 +127,35 @@ not belong on the MVP landing page.
 
 ## ADR-006 — Local-first ports and adapters
 
-**Status:** Accepted  
+**Status:** Accepted; AWS competition requirement superseded by ADR-032
 **Decision:** Domain and application services depend on interfaces with local and AWS adapters.  
 **Reason:** Product development and testing must not be blocked by cloud setup, while the submitted path still uses AWS.  
 **Consequence:** AWS SDK imports are confined to adapters.
 
 ## ADR-007 — DynamoDB is structured truth; Knowledge Base is a derived index
 
-**Status:** Accepted  
+**Status:** Superseded by ADR-032
 **Decision:** Persist canonical structured memory and version state in DynamoDB. Use Bedrock Knowledge Bases as retrieval infrastructure.  
 **Reason:** Search indexes can be stale or fail independently; approval and version truth require deterministic records.  
 **Consequence:** Index hits are hydrated and verified before use.
 
 ## ADR-008 — Direct ingestion after approval
 
-**Status:** Accepted  
+**Status:** Superseded by ADR-032
 **Decision:** Render each approved memory version and directly ingest it into the configured Bedrock Knowledge Base, while keeping a canonical S3 copy.  
 **Reason:** Approved knowledge should become searchable without a full source sync.  
 **Consequence:** Approval and indexing use separate statuses and idempotent retry.
 
 ## ADR-009 — Model choice is configuration
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Do not hardcode one foundation model into domain logic.  
 **Reason:** Availability, cost, and model quality change; Bedrock exposes multiple choices.  
 **Consequence:** Prompt behavior and schemas must be model-portable.
 
 ## ADR-010 — Website import is optional and untrusted
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Apify website onboarding is P1. Imported content can produce suggestions but cannot become approved memory directly.  
 **Reason:** Easy onboarding supports the product promise, but import creates prompt-injection and data-quality risks.  
 **Consequence:** The core demo cannot depend on website import.
@@ -175,7 +186,7 @@ not belong on the MVP landing page.
 
 ## ADR-014 — Ship one complete AWS dependency set
 
-**Status:** Accepted
+**Status:** Superseded by ADR-032
 
 **Decision:** `APP_MODE` selects either the complete credential-free local adapter
 set or the complete Bedrock, DynamoDB, S3, and Knowledge Base adapter set once in
@@ -292,7 +303,7 @@ Next.js font system so deployed pages self-host optimized assets.
 
 ## ADR-018 — Lead the public entry page with the product promise
 
-**Status:** Accepted
+**Status:** Accepted; salon-specific copy superseded by ADR-033
 
 **Decision:** The root page is a statement-led public landing experience built
 around “Explain it once. Your company remembers.” It explains the problem,
@@ -320,7 +331,7 @@ Marketing-demo link.
 
 ## ADR-019 — Netlify may host the app; AWS remains the durable core
 
-**Status:** Accepted
+**Status:** Superseded by ADR-032
 
 **Decision:** Use repository-controlled Netlify deployment for the Next.js web
 application when convenient, while Amazon Bedrock, DynamoDB, S3, and Bedrock
@@ -381,7 +392,7 @@ unchanged.
 
 ## ADR-023 — Use a console-first, configurable AWS demo foundation
 
-**Status:** Accepted
+**Status:** Superseded by ADR-032
 **Date:** 2026-07-11
 
 **Decision:** Provision the hackathon AWS foundation through the console in
@@ -540,7 +551,7 @@ The Company profile, company/department hierarchy, seven memory types, and five 
 
 ## ADR-030 — Pool AWS resources with tenant-prefixed business partitions
 
-**Status:** Accepted
+**Status:** Accepted for optional persistence; Bedrock portions superseded by ADR-032
 **Date:** 2026-07-11
 
 **Decision:** Use one pooled DynamoDB table, private S3 bucket, and Bedrock
@@ -568,3 +579,169 @@ message/version partitions must be recreated or explicitly migrated before this
 key shape is deployed. Runtime scans remain prohibited. Physically isolated
 tables, buckets, Knowledge Bases, KMS keys, or AWS accounts remain a future
 enterprise option rather than the default MVP topology.
+
+## ADR-031 — Keep public registration closed behind a waitlist
+
+**Status:** Accepted
+**Date:** 2026-07-11
+
+**Decision:** Public navigation and login offer a waitlist instead of account
+creation. A waitlist submission stores only validated contact details and creates
+no Cognito identity, session, membership, grant, or company. Cognito self-service
+registration remains disabled. Existing owners create accounts through the
+invite-only People & access flow, which is not linked from the public surface.
+
+**Reason:** Early access requires controlled onboarding and a dependable first
+company setup. A hidden public signup URL would be security through obscurity and
+would bypass the membership/invitation model; a real waitlist preserves demand
+without implying that access has been granted.
+
+**Consequence:** The public site exposes `Join waitlist` and `Sign in`, but no
+`Create account` or `Sign up` action. Waitlist entries use a global hashed-email
+DynamoDB partition and are idempotent. Public registration can open later only
+through a new recorded decision and an explicit governed company-creation flow.
+
+## ADR-032 — Remove Bedrock and make the complete demo local-first
+
+**Status:** Superseded by ADR-035
+**Date:** 2026-07-11
+
+**Decision:** Remove Amazon Bedrock model inference, Bedrock Knowledge Bases,
+S3 Vectors, their SDK packages, configuration, smoke path, and competition
+requirements. The complete product demo uses the deterministic fixture
+`ModelGateway` and a repository-backed lexical `KnowledgeIndex`. Approved,
+current structured memory remains authoritative; search is a small derived view
+over that repository rather than a remote vector service.
+
+DynamoDB, S3, and Cognito may remain available as optional persistence and
+identity adapters for hosted operation. They do not change the product story,
+and the credential-free local mode remains the required complete path.
+
+**Reason:** The AWS AI path is externally blocked and no longer supports a
+competition goal. Continuing to carry a model, vector store, provisioning
+handoff, quotas, and dual smoke path adds operational risk without improving the
+owner-visible governed-memory proof.
+
+**Consequence:** Model and search ports stay vendor-neutral so a real provider
+can be added later through a new decision. The UI must describe assistant search
+plainly and must not claim semantic retrieval, embeddings, or live model output.
+The local salon journey, approval boundary, provenance, versioning, company
+scope, and role checks remain mandatory. ADR-007, ADR-008, ADR-014, ADR-019, and
+ADR-023 are superseded; the Bedrock-specific portions of ADR-006 and ADR-030 no
+longer apply.
+
+## ADR-033 — Keep the public landing page business-neutral
+
+**Status:** Superseded in part by ADR-036
+**Date:** 2026-07-11
+
+**Decision:** Remove salon-specific language from the public landing page. Keep
+the same compact proof of one owner statement improving Marketing, Operations,
+and Employee work, but describe it as a general company scenario. Label each
+primary landing action `Start a company project` and keep its direct destination
+at `/chat?assistant=MARKETING`.
+
+**Reason:** The salon remains a useful deterministic fixture after a visitor
+enters the product, but naming that vertical throughout the public page makes My
+Little Company appear narrower than its intended audience. `Start a company
+project` states the visitor's action without claiming that an account is created.
+
+**Consequence:** The public product story is reusable for any small business.
+The current demo data and in-product salon scenario remain unchanged. This
+supersedes only the salon-specific landing-copy portion of ADR-018; the
+statement-led narrative and direct Marketing handoff still apply.
+
+## ADR-034 — Separate Cognito company sign-in from seeded demo access
+
+**Status:** Accepted
+**Date:** 2026-07-11
+
+**Decision:** Keep `/login` exclusively focused on invited company accounts and
+hand authentication, temporary-password changes, and recovery to Amazon Cognito
+managed login through Auth.js. Move the seeded local account picker to
+`/login-demo`. Protected routes select `/login` in Cognito mode and
+`/login-demo` in demo mode while preserving only validated same-origin return
+paths.
+
+**Reason:** Mixing production identity and password-free personas on one page
+makes the trust boundary unclear and leaves the deployed sign-in experience
+feeling like a demo selector. Separate routes make the secure handoff explicit
+without weakening the complete credential-free local product path.
+
+**Consequence:** Public `Sign in` continues to open `/login`; the Cognito page
+shows the waitlist rather than registration. Local tests and demos enter through
+`/login-demo`. The application never collects a Cognito password, and company
+authorization continues to come from a freshly loaded membership rather than
+identity claims.
+
+## ADR-035 — Restore the hosted AWS and private ChatGPT demo path
+
+**Status:** Accepted
+**Date:** 2026-07-11
+
+**Decision:** Restore real Amazon Bedrock generation, Bedrock Knowledge Base
+retrieval over the existing S3 Vectors index, DynamoDB and S3 persistence,
+Cognito managed login, and the private OAuth-protected ChatGPT MCP app as the
+target hosted demonstration. `APP_MODE=aws` selects the complete AWS adapter set;
+it must not silently mix fixtures or repository-only search into that mode.
+
+Keep deterministic local mode as a visibly labelled emergency fallback. A
+provider quota, failed smoke test, or missing external connection prevents an
+AWS or ChatGPT success claim; it does not authorize a mock result.
+
+**Reason:** The presenter explicitly selected a hosted AWS plus ChatGPT journey
+for the recorded demo and approved the least-privilege infrastructure bootstrap.
+The external approval boundary is part of the proof: ChatGPT may read approved
+knowledge and write a proposal, but only My Little Company may approve it.
+
+**Consequence:** ADR-032 is superseded. ADR-007, ADR-008, ADR-014, ADR-019,
+ADR-023, and the Bedrock portions of ADR-006 and ADR-030 apply again. The hosted
+cutover remains gated by `pnpm smoke:aws`, AWS-backed browser verification,
+Cognito login, OAuth discovery, and the exact three-tool ChatGPT acceptance
+sequence. Until those gates pass, the public site remains in labelled local/demo
+mode with MCP disabled.
+
+## ADR-036 — Align the public landing story with the closed waitlist
+
+**Status:** Accepted
+**Date:** 2026-07-11
+
+**Decision:** While public registration is closed, label every primary landing
+action `Join the waitlist` and route it to `/waitlist`. Keep `Sign in` as the
+separate path for invited people. Do not expose direct anonymous Marketing entry
+or demo controls from the public landing page.
+
+Place the concrete company-rule proof directly after the hero, before the longer
+problem explanation. Merge the standalone approval-loop and AI-trust sections
+into one governed-memory explanation so the page proves the product sooner and
+repeats the trust boundary less.
+
+**Reason:** A page that simultaneously says `Join waitlist` and `Start a company
+project` creates a false choice and implies immediate access that the product does
+not offer. The company-rule example explains the product faster than abstract
+memory language, while one combined trust explanation preserves the approval
+boundary without extending the page.
+
+**Consequence:** Anonymous visitors have one honest conversion path. The public
+story remains business-neutral and the salon fixture remains available after
+authorized demo entry. This supersedes the direct-Marketing CTA and section-order
+portions of ADR-033; ADR-033's business-neutral positioning remains accepted.
+
+## ADR-037 — Keep public waitlist persistence independent from assistant runtime mode
+
+**Status:** Accepted
+**Date:** 2026-07-11
+
+**Decision:** Select waitlist storage with `WAITLIST_STORAGE_MODE`, independently
+from `APP_MODE`. Public Netlify deployments use DynamoDB-backed waitlist storage
+even while the assistant experience remains in labelled local/demo mode. Local
+waitlist storage is limited to tests and explicitly disposable private previews.
+
+**Reason:** Function-local temporary files can disappear between invocations or
+deploys. Contact durability must not depend on Bedrock readiness or on whether the
+assistant runtime is using deterministic local behavior.
+
+**Consequence:** The narrow DynamoDB waitlist adapter may be enabled without
+mixing AWS-backed company truth into local/demo assistant behavior. Public
+functions require only the configured AWS Region, waitlist table, and scoped
+credentials for this path.

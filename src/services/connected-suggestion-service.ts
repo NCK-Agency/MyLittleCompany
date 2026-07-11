@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { canAccess, isOwner } from "@/domain/authorization";
 import { appError } from "@/domain/errors";
+import { containsLikelySecret } from "@/domain/secret-screening";
 import { candidateSchema, createManualCandidateSchema, knowledgeScopeSchema } from "@/domain/schemas";
 import type {
   ActorContext,
@@ -33,14 +34,6 @@ const conversationSuggestionSchema = connectedSuggestionSchema.extend({
     excerpt: z.string().max(300).optional(),
   }),
 });
-
-const secretPatterns = [
-  /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/i,
-  /\bAKIA[0-9A-Z]{16}\b/,
-  /\b(?:sk|rk|pk)_[a-zA-Z0-9_-]{20,}\b/,
-  /\b(?:password|passwd|api[_ -]?key|client[_ -]?secret)\s*[:=]\s*\S{8,}/i,
-  /\bgh[pousr]_[A-Za-z0-9_]{20,}\b/,
-];
 
 export type ConnectedSuggestionResult =
   | { status: "NO_DURABLE_KNOWLEDGE"; message: string }
@@ -207,7 +200,7 @@ export class ConnectedSuggestionService {
   }
 
   private assertNoSecrets(content: string): void {
-    if (secretPatterns.some((pattern) => pattern.test(content))) throw appError("VALIDATION_ERROR");
+    if (containsLikelySecret(content)) throw appError("VALIDATION_ERROR");
   }
 
   private candidateId(actor: ActorContext, idempotencyKey: string): string {

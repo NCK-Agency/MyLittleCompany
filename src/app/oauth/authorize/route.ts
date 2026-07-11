@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { loginPathForMode } from "@/lib/auth-navigation";
 import { env } from "@/lib/env";
 import { oauthErrorResponse } from "@/oauth/http";
 import { oauthService } from "@/server/container";
@@ -21,7 +22,8 @@ export async function GET(request: Request): Promise<Response> {
     const session = await auth();
     if (!session?.user.identityProvider || !session.user.identitySubject) {
       const returnTo = `${url.pathname}${url.search}`;
-      return Response.redirect(new URL(`/login?returnTo=${encodeURIComponent(returnTo)}`, url.origin), 302);
+      const loginPath = loginPathForMode(env.AUTH_MODE);
+      return Response.redirect(new URL(`${loginPath}?returnTo=${encodeURIComponent(returnTo)}`, url.origin), 302);
     }
     const consentToken = oauthService.createConsentToken(authorizationRequest);
     const callback = new URL(authorizationRequest.redirectUri);

@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function signIn(page: Page, name: string): Promise<void> {
   await page.context().clearCookies();
-  await page.goto("/login");
+  await page.goto("/login-demo");
   await page.getByRole("button", { name: new RegExp(name, "i") }).click();
   await expect(page).toHaveURL(/\/workspace/);
 }

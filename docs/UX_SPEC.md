@@ -20,7 +20,7 @@ The owner should understand the product through use:
 
 Use four top-level destinations:
 
-1. **Home** — public product statement, trust story, salon proof, and live-demo handoff.
+1. **Home** — public product statement, trust story, company-neutral proof, and project handoff.
 2. **Chat** — Marketing, Operations, and Employee conversations.
 3. **Review** — suggested company knowledge awaiting a decision.
 4. **Playbook** — approved company knowledge.
@@ -81,22 +81,26 @@ Avoid anthropomorphic claims such as “I know everything about your company.”
 
 #### Purpose
 
-Explain the product promise to a first-time owner or judge and make the live salon
-proof the obvious next action.
+Explain the product promise to a first-time owner or judge and make joining the
+private-beta waitlist the obvious next action while registration is closed.
 
 #### Required content
 
 - Primary statement: “Explain it once. Your company remembers.”
 - One-line explanation that normal owner conversations become human-approved,
   reusable company knowledge.
+- A company-neutral proof directly after the hero showing one owner statement
+  changing Marketing, Operations, and Employee behavior.
 - The owner problem: repeated explanations, improvised employee answers, and AI
   work that forgets company context.
 - The governed-memory loop: conversation, suggestion, approval, Playbook, reuse.
-- The trust boundary: AI suggests; a human decides; authoritative answers remain
-  source-backed.
-- The salon proof showing one owner statement changing Marketing, Operations, and
-  Employee behavior.
-- One primary action that opens the Marketing salon demo.
+- The trust boundary inside that explanation: AI suggests; a human decides;
+  authoritative answers remain source-backed.
+- One primary action, “Join the waitlist,” linked to `/waitlist`, plus `Sign in`
+  for people who already have an invitation.
+
+Do not expose direct demo controls or a direct anonymous product-entry action on
+the public landing page while registration remains closed.
 
 Do not add pricing, invented testimonials, generic feature grids, or optional
 integration catalogs to the MVP landing page.
@@ -115,9 +119,11 @@ action obvious after the public story has been understood.
 #### Required content
 
 - Company name and short description.
-- Primary prompt: “What are you working on today?”
-- Marketing, Operations, and Employee actions.
-- Review count and recent approved knowledge.
+- The most recently active accessible conversation, with a direct resume action.
+- Suggested company knowledge awaiting review, shown only when the viewer can
+  approve knowledge in at least one scope.
+- A count and concise list of approved knowledge the viewer is allowed to read.
+- A clear start-conversation empty state when no prior conversation exists.
 - Company profile editing.
 - Demo reset action in demo mode only.
 
@@ -298,8 +304,8 @@ conflict-resolution flow.
 
 Direct owner edits are an explicit human approval action. After saving, keep the
 owner on the entry, show the new version number, and make the former wording
-available in version history. Do not expose embeddings or vector-store controls;
-put the derived Knowledge Base document identifier behind `Knowledge Base details`.
+available in version history. Do not expose search implementation details; put
+the derived assistant-search document identifier behind `Search details`.
 
 ### 5.7 SOP view
 
@@ -336,9 +342,15 @@ Below the answer, show:
 
 ### 5.9 Login and People & access
 
-`/login` uses Cognito managed login in deployed mode and a clearly marked account
-picker in demo mode. `/workspace/access` is owner-only and secondary to the four
-primary navigation items.
+`/login` is the invite-only company-account entry point and hands credentials,
+temporary-password changes, and recovery to Cognito managed login. It never
+collects a password inside My Little Company. The page asks only for an email
+address and passes it to Cognito as a sign-in hint. It does not advertise or link
+to demo access. `/login-demo` is a separate, clearly marked seeded-account picker
+for the credential-free local product path.
+Protected routes choose the correct entry point from the server authentication
+mode. `/workspace/access` is owner-only and secondary to the four primary
+navigation items.
 
 The access screen shows each person's name, email, status, business roles, and a
 plain matrix of `Read`, `Suggest`, and `Approve` against `Entire company` and each
@@ -349,7 +361,18 @@ When authentication succeeds without an active membership, show a calm no-access
 state with owner-contact guidance and sign out. Do not expose Cognito groups,
 tokens, claims, or IAM language.
 
-### 5.10 Connected assistants
+### 5.10 Public waitlist and closed registration
+
+Anonymous navigation shows `Sign in` and one stronger `Join the waitlist` action.
+The login page repeats the waitlist path for people who do not already have an
+account. Do not show a public `Create account`, `Sign up`, or registration action.
+
+`/waitlist` explains that new accounts are invite-only, collects a required work
+email plus optional name and company, and confirms the request without implying
+that an account was created. Duplicate submissions receive the same confirmation.
+Existing invited people can return to Sign in.
+
+### 5.11 Connected assistants
 
 The OAuth consent screen uses plain language: a connected assistant may read
 approved knowledge and/or create suggestions, subject to the person's existing

@@ -1,5 +1,6 @@
 import { canAccess } from "@/domain/authorization";
 import { appError } from "@/domain/errors";
+import { candidateSchema, sopDraftSchema } from "@/domain/schemas";
 import type { ActorContext, KnowledgeScope, MemoryCandidate, SopDraft } from "@/domain/types";
 import type { MemoryRepository } from "@/ports/memory-repository";
 import type { ModelGateway } from "@/ports/model-gateway";
@@ -20,11 +21,17 @@ export class SopService {
   ): Promise<{ sop: SopDraft; candidate?: MemoryCandidate }> {
     if (!canAccess(actor, "READ", scope)) throw appError("FORBIDDEN");
     const approved = await this.retrieval.retrieve(request, actor, ["OPERATIONS"], scope);
-    const sop = await this.model.generateSop({ request, approvedMemories: approved });
+    const generated = await this.model.generateSop({ request, approvedMemories: approved });
+    const sop = sopDraftSchema.parse({
+      ...generated,
+      sourceMemories: generated.sourceMemories.filter((source) => approved.some((memory) =>
+        memory.record.id === source.memoryId && memory.version.version === source.version)),
+    });
+    if (sop.sourceMemories.length === 0) throw appError("NO_APPROVED_CONTEXT");
     if (!saveAsSuggestion) return { sop };
     if (!canAccess(actor, "SUGGEST", scope)) throw appError("FORBIDDEN");
     const now = new Date().toISOString();
-    const candidate: MemoryCandidate = {
+    const candidate: MemoryCandidate = candidateSchema.parse({
       id: `candidate-${crypto.randomUUID()}`,
       version: 1,
       companyId: actor.companyId,
@@ -39,17 +46,18 @@ export class SopService {
       sensitivity: "INTERNAL",
       sourceRefs: sop.sourceMemories.map((source) => ({
         sourceId: source.memoryId,
-        label: "Approved pricing decision",
+        label: approved.find((memory) => memory.record.id === source.memoryId)?.version.title
+          ?? "Approved company knowledge",
       })),
       confidence: 1,
       relation: "UNRELATED",
       relatedMemoryIds: sop.sourceMemories.map((source) => source.memoryId),
       status: "PROPOSED",
       extractionPromptVersion: "operations-assistant-1.0.0",
-      modelId: "local-fixture-v1",
+      modelId: "model-gateway",
       createdBy: actor.userId,
       createdAt: now,
-    };
+    });
     await this.memories.createCandidate(candidate);
     return { sop, candidate };
   }

@@ -182,18 +182,20 @@ Only approved memory may be used as authoritative company context.
 The canonical, dated record is `docs/DECISION_LOG.md`. This section is a compact
 product-only view; when a decision changes, add or supersede an ADR there first.
 
-- Primary hackathon track: Organizational AI Memory.
-- Secondary track: AWS AI/ML.
+- The product focus is Organizational AI Memory; there is no longer a separate
+  AWS AI/ML competition track.
 - The agent-workforce concept supports the story but is not the primary product.
 - Two assistants are enough: Marketing and Operations.
 - An Employee Q&A mode demonstrates human reuse.
 - Human approval is mandatory before a memory becomes authoritative.
 - The app is chat-first but not chat-only; Review and Playbook are first-class.
 - The public root route leads with “Explain it once. Your company remembers.” and
-  tells the story in this order: problem, governed-memory loop, trust boundary,
-  salon proof, and live demo action.
-- The primary landing action opens the Marketing salon conversation directly.
-  Demo-company profile, recent-knowledge, and reset controls live at `/workspace`.
+  tells the story in this order: company-neutral proof, problem,
+  governed-memory loop with its trust boundary, and a waitlist close.
+- The public landing page remains business-neutral. Its primary action is
+  “Join the waitlist” while public registration is closed. Direct product and
+  demo-control links are not exposed from the public story. Demo-company profile,
+  recent-knowledge, and reset controls live at `/workspace` for signed-in users.
 - The approved visual system is kinetic editorial utility: cobalt anchors, butter
   suggests, coral confirms, and the four-fragment mark represents approved memory.
 - The Company Playbook is an editable workspace, not a read-only audit screen. An owner may directly amend approved knowledge; each save creates a new approved, source-backed version and refreshes assistant retrieval.
@@ -209,13 +211,22 @@ product-only view; when a decision changes, add or supersede an ADR there first.
   knowledge, and suggestions awaiting an owner decision. Operations always uses
   the owner's actual request as the SOP goal.
 - Knowledge ownership, review dates, freshness automation, relationship graphs,
-  and portable export remain deferred until the core conflict and AWS paths are
-  complete.
+  and portable export remain deferred until the core conflict path is complete.
 - Cognito proves deployed user identity, while active company memberships remain
   the source of authorization truth. Owners have full access; other users receive
   independent company/department `READ`, `SUGGEST`, and `APPROVE` grants that are
   reloaded on every request. Demo mode uses Maya, Minh, An, and Lina to exercise
   owner, contributor, approver, and read-only behavior.
+- Cognito and demo access have separate entry points: `/login` hands invited
+  company accounts to Cognito managed login, while `/login-demo` contains the
+  clearly labelled seeded account picker used by the complete local demo.
+- Public account registration is closed. Anonymous visitors join an idempotent
+  waitlist that creates no identity or company access; existing owners remain the
+  only path for new accounts through People & access invitations.
+- Public waitlist durability is configured independently from the assistant
+  runtime. Netlify uses DynamoDB-backed waitlist storage even while the product
+  is visibly running its deterministic local/demo assistant path; file-backed
+  waitlist storage is only for tests and disposable private previews.
 - ChatGPT, Codex, Claude Code, Gemini CLI, Kiro, and other compatible clients may
   connect through the remote tool-only MCP endpoint. The
   OAuth bridge records consent but never grants company access; every tool call
@@ -226,13 +237,12 @@ product-only view; when a decision changes, add or supersede an ADR there first.
   knowledge, and receive a cited answer from that import. Search indexing remains
   a separate visible state; imported context never creates folders or silently
   changes the Company profile.
-- AWS Bedrock and Bedrock Knowledge Bases are core, not incidental hosting.
-- Production data uses pooled AWS resources with company-prefixed DynamoDB child
-  partitions, company-prefixed S3 objects, mandatory Knowledge Base company
-  metadata, and structured hydration that fails closed before model use.
-- The hackathon AWS foundation is console-first in `us-east-1`, with Nova Lite,
-  Titan Text Embeddings V2, and S3 Vectors as configurable demo defaults.
-- Local adapters must keep development unblocked.
+- The complete product and demo run in credential-free local mode with
+  deterministic assistant behavior and repository-backed lexical search.
+- Approved structured memory remains authoritative; search results are still
+  hydrated and revalidated before assistant use.
+- DynamoDB, S3, and Cognito are optional hosting adapters, not part of the core
+  product claim or a competition requirement.
 - Website onboarding through Apify is optional after the memory loop works.
 - Voice onboarding through Agora is a stretch feature.
 - Notion is an optional import/export destination, not the source of truth.

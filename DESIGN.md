@@ -79,3 +79,4 @@ Color should remain purposeful: cobalt anchors, butter suggests, coral confirms.
 | 2026-07-11 | Use a statement-led public root page | First-time owners and judges must understand the product promise before entering the app |
 | 2026-07-11 | Keep the public story separate from demo controls | `/` explains and hands off to Marketing; `/workspace` preserves profile, recent knowledge, and reset actions |
 | 2026-07-11 | Tell the landing story through the salon proof | A concrete owner statement changing Marketing, Operations, and Employee behavior is stronger than a feature inventory |
+| 2026-07-11 | Align every public landing CTA with the waitlist | Closed registration must read as one honest conversion path; invited users retain a separate Sign in action |

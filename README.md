@@ -93,6 +93,7 @@ and scope record, read [`docs/DECISION_LOG.md`](docs/DECISION_LOG.md).
 - Amazon S3
 - AWS SDK for JavaScript v3
 - Amazon Cognito managed login with application-owned scoped memberships
+- Waitlist-only public access with owner-invited account creation
 - Netlify or another suitable web deployment target
 - Optional after MVP: Apify, Langfuse, Antitech, Agora, Notion
 

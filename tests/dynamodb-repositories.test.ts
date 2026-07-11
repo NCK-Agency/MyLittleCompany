@@ -161,7 +161,7 @@ describe("DynamoRepositories company partition isolation", () => {
     });
     const repository = new DynamoRepositories({ send } as never, "table");
 
-    await repository.resetDemo();
+    await repository.resetDemo("demo-salon");
 
     const queries = send.mock.calls
       .map(([command]) => command)

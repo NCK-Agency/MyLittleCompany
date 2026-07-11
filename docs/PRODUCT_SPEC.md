@@ -24,7 +24,7 @@ Turn the knowledge in a business owner’s head into trusted memory for every em
 - Make approval clear and easy for a non-technical owner.
 - Reuse one approved decision across Marketing, Operations, and Employee modes.
 - Preserve rationale, source, scope, approval, and version.
-- Use AWS AI/ML meaningfully in the deployed path.
+- Keep the demo deterministic and independent of external model or vector-service availability.
 - Provide a polished, resettable judge demo.
 
 ### Success criteria
@@ -224,8 +224,8 @@ access for the whole company or a department.
 
 **Acceptance criteria:**
 
-- Cognito managed login establishes deployed identity; local mode uses clearly
-  marked seeded accounts through the same server actor boundary.
+- `/login` hands deployed identity to Cognito managed login; `/login-demo` uses
+  clearly marked seeded accounts through the same server actor boundary.
 - Every request reloads an active membership; browser roles and scopes are ignored.
 - Owners can do anything and manage access without changing the primary navigation.
 - Department reads include relevant company knowledge but exclude sibling teams.
@@ -238,6 +238,23 @@ access for the whole company or a department.
 - Connected assistants expose no approval operation. A suggestion remains outside
   retrieval until a scoped human reviewer resolves any conflict, approves it,
   and indexing succeeds.
+
+### FR-14 Waitlist-only public access
+
+Public visitors can request future access without creating an account. Account
+creation remains invite-only through an existing owner.
+
+**Acceptance criteria:**
+
+- Public navigation, landing actions, and login show `Join the waitlist`, not
+  `Create account` or a direct anonymous product-entry action.
+- Joining requires a valid email and may include a name and company.
+- Duplicate email submissions are idempotent and receive the same success message.
+- The public response never reveals whether an email was already registered.
+- Waitlist entries persist locally and in DynamoDB without entering company data.
+- Cognito self-registration remains disabled; owners invite people through
+  People & access.
+- Joining the waitlist creates no identity, session, membership, or company access.
 
 ## 4. Non-functional requirements
 
@@ -262,7 +279,7 @@ access for the whole company or a department.
 
 ### Reliability
 
-- Local demo mode remains usable if AWS is unavailable.
+- The complete demo works without cloud credentials or model capacity.
 - Network operations use bounded retries and timeouts.
 - State transitions are idempotent where practical.
 

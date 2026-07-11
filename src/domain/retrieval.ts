@@ -12,6 +12,12 @@ export function isMemoryEligible(
   if (record.currentVersion !== version.version) return false;
   if (!canAccess(actor, "READ", record.scope)) return false;
   if (record.sensitivity === "CONFIDENTIAL" && !isOwner(actor)) return false;
-  if (isOwner(actor) && requestedRoles === undefined) return true;
-  return (requestedRoles ?? actor.roles).some((role) => record.appliesToRoles.includes(role));
+  if (isOwner(actor)) {
+    if (requestedRoles === undefined) return true;
+    return requestedRoles.some((role) => record.appliesToRoles.includes(role));
+  }
+  const eligibleRoles = requestedRoles === undefined
+    ? actor.roles
+    : requestedRoles.filter((role) => actor.roles.includes(role));
+  return eligibleRoles.some((role) => record.appliesToRoles.includes(role));
 }

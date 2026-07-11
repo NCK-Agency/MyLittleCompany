@@ -20,7 +20,6 @@ import type { GeneratedText, ModelGateway } from "@/ports/model-gateway";
 interface ConverseSender {
   send(command: ConverseCommand, options?: { abortSignal?: AbortSignal }): Promise<ConverseCommandOutput>;
 }
-
 const extractedCandidateSchema = z.object({
   type: memoryTypeSchema,
   title: z.string().min(3).max(120),
@@ -81,11 +80,20 @@ function validatedCitations(text: string, memories: HydratedMemory[]): Generated
     memory.record.id,
   ]));
   const sourceMemoryIds: string[] = [];
+  let unknownCitationCount = 0;
   const content = text.replace(/\[\[memory:([^:\]]+):v(\d+)\]\]/g, (_marker, id: string, version: string) => {
     const valid = allowed.get(`${id}:v${version}`);
     if (valid && !sourceMemoryIds.includes(valid)) sourceMemoryIds.push(valid);
+    if (!valid) unknownCitationCount += 1;
     return "";
   }).replace(/\s+([.,])/g, "$1").trim();
+  if (unknownCitationCount > 0) {
+    console.warn(JSON.stringify({
+      event: "model_output_quality_failure",
+      code: "UNKNOWN_MEMORY_CITATION",
+      unknownCitationCount,
+    }));
+  }
   return { content, sourceMemoryIds };
 }
 

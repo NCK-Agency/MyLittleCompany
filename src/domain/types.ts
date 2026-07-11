@@ -70,6 +70,17 @@ export interface CompanyMembership {
   updatedAt: string;
 }
 
+export interface WaitlistEntry {
+  id: string;
+  email: string;
+  displayName?: string;
+  companyName?: string;
+  status: "WAITING";
+  source: "PUBLIC_SITE";
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface OrganizationalUnit {
   id: string;
   companyId: string;

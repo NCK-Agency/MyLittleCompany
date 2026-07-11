@@ -486,10 +486,17 @@ business-data access.
 19. Register and load one MCP OAuth client without scanning.
 20. Consume one authorization code exactly once.
 21. Rotate or revoke one hashed refresh grant and revoke a token family.
+22. Idempotently add one public waitlist email without scanning or creating a membership.
 
 OAuth items use DynamoDB TTL for expired codes and refresh grants. TTL is cleanup,
 not authorization: every read still checks expiry, binding, and one-time use.
 Tokens and codes are never stored in plaintext.
+
+Public waitlist entries use `PK = WAITLIST#{sha256(normalizedEmail)}` and
+`SK = ENTRY`. The item stores a generated ID, normalized email, optional name and
+company, `WAITING` status, `PUBLIC_SITE` source, and timestamps. It has no
+`companyId`, identity subject, membership, grant, or role. The API exposes no
+public list or email lookup.
 
 ## 9. Canonical index document
 

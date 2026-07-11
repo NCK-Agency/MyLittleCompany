@@ -76,13 +76,14 @@ from the Plus menu and enable My Little Company for that conversation.
 Use these prompts in a new conversation:
 
 1. `Use My Little Company to find our approved promotion discount rule. Do not use web browsing.`
-2. `Open the most relevant result and explain the rule with its rationale and source.`
+2. `Open the most relevant result and explain the current rule with its rationale and source.`
 3. `Our new lasting rule is that appointment reminders must be sent 24 hours in advance. Offer to suggest this to My Little Company, but do not call the write tool until I confirm.`
 4. After confirming the write: `Is that rule approved company policy now?`
 
 Expected behavior:
 
-- Prompts 1–2 call `search` then `fetch` and cite a canonical Playbook URL.
+- Prompts 1–2 call `search` then `fetch`, return version 2 with the current 10%
+  maximum and free-add-on preference, and cite a canonical Playbook URL.
 - Prompt 3 asks before calling `suggest_company_knowledge`.
 - The suggestion result is `PROPOSED` and links to Review.
 - Prompt 4 says no: a proposal is not approved truth.
@@ -101,9 +102,13 @@ Expected behavior:
 Disabling a membership or removing a grant must affect the next app request.
 ChatGPT consent never replaces My Little Company authorization.
 
-## Current external blocker
+## Final connection gate
 
-This repository is not currently linked to a public deployment, and the GitHub
-repository has no recorded deployment URL. The code and Draft-app profile are
-ready, but creating the app in ChatGPT requires the deployed HTTPS MCP URL and a
-signed-in eligible ChatGPT account.
+Do not create the Draft app against a temporary or guessed origin. First obtain
+the permanent Netlify HTTPS origin, configure Cognito and OAuth with that exact
+origin, deploy, and pass the public endpoint checks above. Then create the app
+and verify exactly three tools are present. No approval tool may exist.
+
+Set the app to ask before making changes. The OAuth screen, ChatGPT tool results,
+and Review state must be real during the recording; they are never replaced by a
+mock or deterministic fixture.

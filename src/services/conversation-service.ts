@@ -1,6 +1,8 @@
 import { createConversationSchema, sendMessageSchema } from "@/domain/schemas";
 import { canAccess, isOwner } from "@/domain/authorization";
 import { appError } from "@/domain/errors";
+import { NO_APPROVED_COMPANY_RULE } from "@/domain/grounding";
+import { containsLikelySecret } from "@/domain/secret-screening";
 import type { ActorContext, Conversation, GroundedAnswer, MemoryCandidate, Message, SopDraft } from "@/domain/types";
 import type { ConversationRepository } from "@/ports/conversation-repository";
 import type { ModelGateway } from "@/ports/model-gateway";
@@ -56,6 +58,7 @@ export class ConversationService {
     groundedAnswer?: GroundedAnswer;
   }> {
     const values = sendMessageSchema.parse(input);
+    if (containsLikelySecret(values.content)) throw appError("VALIDATION_ERROR");
     const conversation = await this.conversations.get(conversationId, actor.companyId);
     if (!conversation) throw appError("NOT_FOUND");
     this.assertConversationAccess(conversation, actor);
@@ -123,8 +126,10 @@ export class ConversationService {
           approvedAt: memory.version.approvedAt,
         }] : [];
       });
+      const safeAnswer = sourceMemories.length ? generated.content : NO_APPROVED_COMPANY_RULE;
+      if (!sourceMemories.length) generated = { ...generated, content: safeAnswer, sourceMemoryIds: [] };
       groundedAnswer = {
-        answer: generated.content,
+        answer: safeAnswer,
         groundingStatus: sourceMemories.length ? "GROUNDED" : "NO_APPROVED_CONTEXT",
         sourceMemories,
       };

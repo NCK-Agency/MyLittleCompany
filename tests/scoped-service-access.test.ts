@@ -4,6 +4,7 @@ import { LocalMemoryRepository } from "@/adapters/local/memory-repository";
 import {
   conversationService,
   connectedSuggestionService,
+  companyService,
   membershipService,
   memoryService,
 } from "@/server/container";
@@ -143,6 +144,11 @@ describe("scoped service access", () => {
       idempotencyKey: "connected-secret-rule-3",
       content: "The api_key = sk_abcdefghijklmnopqrstuvwxyz0123456789 should be remembered.",
     }, marketing)).rejects.toThrow("VALIDATION_ERROR");
+    await expect(connectedSuggestionService.suggest({
+      ...input,
+      idempotencyKey: "connected-secret-rule-4",
+      content: "The client_secret=sk-proj-abcdefghijklmnopqrstuvwxyz0123456789 must stay private.",
+    }, marketing)).rejects.toThrow("VALIDATION_ERROR");
   });
 
   it("ignores forged company identity fields in suggestion input", async () => {
@@ -161,5 +167,44 @@ describe("scoped service access", () => {
     }, owner);
     expect(candidate.companyId).toBe(owner.companyId);
     expect(candidate.createdBy).toBe(owner.userId);
+  });
+
+  it("filters Playbook reads and version history by the viewer's business roles", async () => {
+    const owner = ownerActor();
+    const employee = await membershipService.resolveActor("DEMO", "user-employee-demo");
+    const marketingOnly = await memoryService.createMemoryPage({
+      type: "POLICY",
+      title: "Marketing-only campaign rule",
+      statement: "Marketing campaigns must use the approved campaign brief.",
+      rationale: "Keep campaign work consistent.",
+      appliesToRoles: ["MARKETING"],
+      tags: ["marketing"],
+      sensitivity: "INTERNAL",
+      scope: { level: "COMPANY" },
+    }, owner);
+
+    expect((await memoryService.listMemories(employee)).map((memory) => memory.record.id))
+      .not.toContain(marketingOnly.record.id);
+    await expect(memoryService.getMemory(marketingOnly.record.id, employee)).resolves.toBeNull();
+
+    const updated = await memoryService.amendMemory(marketingOnly.record.id, {
+      expectedMemoryVersion: marketingOnly.record.currentVersion,
+      title: marketingOnly.version.title,
+      statement: "Employees may use the approved campaign brief when answering campaign questions.",
+      rationale: marketingOnly.version.rationale,
+      appliesToRoles: ["EMPLOYEE"],
+      scope: { level: "COMPANY" },
+    }, owner);
+    const employeeDetail = await memoryService.getMemory(updated.record.id, employee);
+    expect(employeeDetail?.history.map((version) => version.version)).toEqual([2]);
+    expect((await memoryService.getMemory(updated.record.id, owner))?.history.map((version) => version.version))
+      .toEqual([2, 1]);
+  });
+
+  it("allows only an owner from the configured demo company to reset demo data", async () => {
+    const owner = ownerActor();
+    await expect(companyService.resetDemo({ ...owner, companyId: "other-company" }))
+      .rejects.toThrow("FORBIDDEN");
+    await expect(companyService.resetDemo(owner)).resolves.toMatchObject({ id: owner.companyId });
   });
 });

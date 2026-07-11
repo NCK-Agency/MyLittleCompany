@@ -11,12 +11,12 @@ import { BedrockModelGateway } from "@/adapters/aws/bedrock-model-gateway";
 import { DynamoRepositories } from "@/adapters/aws/dynamodb-repositories";
 import { DynamoOAuthRepository } from "@/adapters/aws/dynamodb-oauth-repository";
 import { DynamoImportRepository } from "@/adapters/aws/dynamodb-import-repository";
+import { DynamoWaitlistRepository } from "@/adapters/aws/dynamodb-waitlist-repository";
 import { S3SourceRepository } from "@/adapters/aws/s3-source-repository";
 import { S3SourceImporter } from "@/adapters/aws/s3-source-importer";
 import { LocalCompanyRepository } from "@/adapters/local/company-repository";
 import { LocalConversationRepository } from "@/adapters/local/conversation-repository";
 import { FixtureModelGateway } from "@/adapters/local/fixture-model-gateway";
-import { LocalKnowledgeIndex } from "@/adapters/local/knowledge-index";
 import { LocalIdentityAdmin } from "@/adapters/local/identity-admin";
 import { LocalImportRepository } from "@/adapters/local/import-repository";
 import { LocalMembershipRepository } from "@/adapters/local/membership-repository";
@@ -24,6 +24,8 @@ import { LocalMemoryRepository } from "@/adapters/local/memory-repository";
 import { LocalOAuthRepository } from "@/adapters/local/oauth-repository";
 import { LocalSourceRepository } from "@/adapters/local/source-repository";
 import { LocalSourceImporter } from "@/adapters/local/source-importer";
+import { LocalWaitlistRepository } from "@/adapters/local/waitlist-repository";
+import { RepositoryKnowledgeIndex } from "@/adapters/repository-knowledge-index";
 import { env } from "@/lib/env";
 import type { CompanyRepository } from "@/ports/company-repository";
 import type { ConversationRepository } from "@/ports/conversation-repository";
@@ -35,6 +37,7 @@ import type { MemoryRepository } from "@/ports/memory-repository";
 import type { ModelGateway } from "@/ports/model-gateway";
 import type { OAuthRepository } from "@/ports/oauth-repository";
 import type { SourceRepository } from "@/ports/source-repository";
+import type { WaitlistRepository } from "@/ports/waitlist-repository";
 import { AssistantService } from "@/services/assistant-service";
 import { CompanyService } from "@/services/company-service";
 import { ConversationService } from "@/services/conversation-service";
@@ -45,6 +48,7 @@ import { MembershipService } from "@/services/membership-service";
 import { OnboardingService } from "@/services/onboarding-service";
 import { OAuthService } from "@/oauth/oauth-service";
 import { SopService } from "@/services/sop-service";
+import { WaitlistService } from "@/services/waitlist-service";
 
 interface Dependencies {
   companies: CompanyRepository;
@@ -57,13 +61,30 @@ interface Dependencies {
   imports: ImportRepository;
 }
 
+function awsSdkConfig(region: string) {
+  const credentials = env.MLC_AWS_ACCESS_KEY_ID && env.MLC_AWS_SECRET_ACCESS_KEY
+    ? {
+        accessKeyId: env.MLC_AWS_ACCESS_KEY_ID,
+        secretAccessKey: env.MLC_AWS_SECRET_ACCESS_KEY,
+      }
+    : undefined;
+  return { region, maxAttempts: 3, credentials };
+}
+
+function configuredAwsRegion(): string {
+  const region = env.MLC_AWS_REGION ?? env.AWS_REGION;
+  if (!region) throw new Error("CONFIGURATION_ERROR");
+  return region;
+}
+
 function localDependencies(): Dependencies {
+  const memories = new LocalMemoryRepository();
   return {
     companies: new LocalCompanyRepository(),
     conversations: new LocalConversationRepository(),
-    memories: new LocalMemoryRepository(),
+    memories,
     memberships: new LocalMembershipRepository(),
-    index: new LocalKnowledgeIndex(),
+    index: new RepositoryKnowledgeIndex(memories),
     model: new FixtureModelGateway(),
     sources: new LocalSourceRepository(),
     imports: new LocalImportRepository(),
@@ -72,7 +93,7 @@ function localDependencies(): Dependencies {
 
 function awsDependencies(): Dependencies {
   if (env.APP_MODE !== "aws") throw new Error("CONFIGURATION_ERROR");
-  const sdkConfig = { region: env.AWS_REGION, maxAttempts: 3 };
+  const sdkConfig = awsSdkConfig(configuredAwsRegion());
   const documentClient = DynamoDBDocumentClient.from(new DynamoDBClient(sdkConfig), {
       marshallOptions: { removeUndefinedValues: true },
     });
@@ -103,7 +124,7 @@ const sourceImporter = env.APP_MODE === "aws"
   : new LocalSourceImporter(dependencies.sources);
 const identityAdmin: IdentityAdmin = env.AUTH_MODE === "cognito"
   ? new CognitoIdentityAdmin(
-    new CognitoIdentityProviderClient({ region: env.COGNITO_REGION!, maxAttempts: 3 }),
+    new CognitoIdentityProviderClient(awsSdkConfig(env.COGNITO_REGION!)),
     env.COGNITO_USER_POOL_ID!,
   )
   : new LocalIdentityAdmin();
@@ -112,10 +133,21 @@ const retrievalService = new MemoryRetrievalService(dependencies.index, dependen
 function oauthRepository(): OAuthRepository {
   if (env.APP_MODE !== "aws") return new LocalOAuthRepository();
   const documentClient = DynamoDBDocumentClient.from(
-    new DynamoDBClient({ region: env.AWS_REGION, maxAttempts: 3 }),
+    new DynamoDBClient(awsSdkConfig(configuredAwsRegion())),
     { marshallOptions: { removeUndefinedValues: true } },
   );
   return new DynamoOAuthRepository(documentClient, env.DYNAMODB_TABLE_NAME);
+}
+
+function waitlistRepository(): WaitlistRepository {
+  if (env.APP_MODE !== "aws" && env.WAITLIST_STORAGE_MODE !== "dynamodb") {
+    return new LocalWaitlistRepository();
+  }
+  const documentClient = DynamoDBDocumentClient.from(
+    new DynamoDBClient(awsSdkConfig(configuredAwsRegion())),
+    { marshallOptions: { removeUndefinedValues: true } },
+  );
+  return new DynamoWaitlistRepository(documentClient, env.DYNAMODB_TABLE_NAME!);
 }
 
 export const oauthService = new OAuthService(oauthRepository(), {
@@ -151,7 +183,7 @@ export const memoryService = new MemoryService(
 );
 export const assistantService = new AssistantService(retrievalService, dependencies.model);
 export const sopService = new SopService(retrievalService, dependencies.model, dependencies.memories);
-export const companyService = new CompanyService(dependencies.companies);
+export const companyService = new CompanyService(dependencies.companies, env.DEMO_COMPANY_ID);
 export const onboardingService = new OnboardingService(
   dependencies.imports,
   dependencies.sources,
@@ -165,4 +197,5 @@ export const membershipService = new MembershipService(
   dependencies.companies,
   dependencies.memories,
 );
+export const waitlistService = new WaitlistService(waitlistRepository());
 export { retrievalService };

@@ -27,3 +27,7 @@ test-results/
 .data/
 .tmp/
 .gstack/
+
+# Local Netlify state
+.netlify
+deno.lock

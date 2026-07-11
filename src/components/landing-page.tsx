@@ -29,21 +29,28 @@ const trustRules = [
   "When the company has not decided, My Little Company says so instead of guessing.",
 ];
 
+function WaitlistCta() {
+  return (
+    <Link className="primary-button landing-primary-cta" href="/waitlist">
+      Join the waitlist
+      <span aria-hidden="true" className="landing-cta-arrow">→</span>
+    </Link>
+  );
+}
+
 export function LandingPage() {
   return (
     <main className="landing-page">
       <section className="landing-hero" aria-labelledby="landing-title">
         <div className="landing-hero-copy">
-          <p className="landing-eyebrow">The company memory your people and assistants can trust</p>
+          <p className="landing-eyebrow">Approved company knowledge for small teams</p>
           <h1 id="landing-title">Explain it once.<br />Your company remembers.</h1>
-          <p className="landing-hero-summary">My Little Company turns everyday owner conversations into human-approved company knowledge, so every employee and assistant can act from the same truth.</p>
+          <p className="landing-hero-summary">Turn everyday owner conversations into approved company knowledge your team and AI assistants can reuse.</p>
           <div className="landing-hero-actions">
-            <Link className="primary-button landing-primary-cta" href="/chat?assistant=MARKETING">
-              Start the live salon demo
-              <span aria-hidden="true" className="landing-cta-arrow">→</span>
-            </Link>
-            <a className="landing-text-link" href="#how-it-works">How it works ↓</a>
+            <WaitlistCta />
+            <a className="landing-text-link" href="#proof">See how it works ↓</a>
           </div>
+          <p className="landing-beta-note">Private beta. We’ll invite early teams gradually.</p>
         </div>
 
         <div aria-label="Scattered conversation fragments becoming approved company memory" className="landing-memory-stage" role="img">
@@ -70,6 +77,39 @@ export function LandingPage() {
             <li key={step}><span>{String(index + 1).padStart(2, "0")}</span>{step}</li>
           ))}
         </ol>
+      </section>
+
+      <section className="landing-proof" id="proof" aria-labelledby="proof-title">
+        <header>
+          <p className="page-kicker">One conversation. Three correct outcomes.</p>
+          <h2 id="proof-title">Watch one owner teach the whole company once.</h2>
+        </header>
+        <div className="landing-proof-grid">
+          <blockquote>
+            <p>“We never discount more than 15%. We prefer a free add-on because we want to maintain a premium image.”</p>
+            <footer>Business owner, during a normal Marketing conversation</footer>
+          </blockquote>
+
+          <div className="landing-approval-example">
+            <div>
+              <BrandMark className="size-10 shrink-0" />
+              <span>Suggested company knowledge</span>
+              <strong>Awaiting review</strong>
+            </div>
+            <h3>Promotional discounts must not exceed 15%</h3>
+            <p>Prefer complimentary add-ons over deeper discounts to protect margins and premium positioning.</p>
+            <span className="landing-example-action">Owner approves</span>
+          </div>
+
+          <ol className="landing-proof-results">
+            <li><span>Marketing</span><strong>Revises the promotion to follow the rule.</strong></li>
+            <li><span>Operations</span><strong>Turns it into a repeatable front-desk SOP.</strong></li>
+            <li><span>Employee</span><strong>Answers “no” to 25% off and cites the approved source.</strong></li>
+          </ol>
+        </div>
+        <div className="landing-proof-actions">
+          <WaitlistCta />
+        </div>
       </section>
 
       <section className="landing-problem" aria-labelledby="problem-title">
@@ -107,55 +147,17 @@ export function LandingPage() {
             </li>
           ))}
         </ol>
-      </section>
-
-      <section className="landing-trust" aria-labelledby="trust-title">
-        <div>
-          <p className="page-kicker text-[var(--cobalt-deep)]">Built for trust</p>
-          <h2 id="trust-title">AI can suggest what matters.<br />It cannot decide what is true.</h2>
-          <p>That boundary is the product. The owner stays in control while the company gains a memory that people and assistants can safely reuse.</p>
-        </div>
-        <ul>
-          {trustRules.map((rule, index) => (
-            <li key={rule}><span>{String(index + 1).padStart(2, "0")}</span>{rule}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="landing-proof" aria-labelledby="proof-title">
-        <header>
-          <p className="page-kicker">One conversation. Three correct outcomes.</p>
-          <h2 id="proof-title">Watch the salon teach the whole company once.</h2>
-        </header>
-        <div className="landing-proof-grid">
-          <blockquote>
-            <p>“We never discount more than 15%. We prefer a free add-on because we want to maintain a premium image.”</p>
-            <footer>Salon owner, during a normal Marketing conversation</footer>
-          </blockquote>
-
-          <div className="landing-approval-example">
-            <div>
-              <BrandMark className="size-10 shrink-0" />
-              <span>Suggested company knowledge</span>
-              <strong>Awaiting review</strong>
-            </div>
-            <h3>Promotional discounts must not exceed 15%</h3>
-            <p>Prefer complimentary add-ons over deeper discounts to protect margins and premium positioning.</p>
-            <span className="landing-example-action">Owner approves</span>
+        <div className="landing-process-trust" aria-labelledby="trust-title">
+          <div>
+            <p className="landing-eyebrow">Built for trust</p>
+            <h3 id="trust-title">AI can suggest what matters.<br />It cannot decide what is true.</h3>
+            <p>That boundary keeps the owner in control while approved knowledge becomes safe to reuse.</p>
           </div>
-
-          <ol className="landing-proof-results">
-            <li><span>Marketing</span><strong>Revises the promotion to follow the rule.</strong></li>
-            <li><span>Operations</span><strong>Turns it into a repeatable front-desk SOP.</strong></li>
-            <li><span>Employee</span><strong>Answers “no” to 25% off and cites the approved source.</strong></li>
-          </ol>
-        </div>
-        <div className="landing-proof-actions">
-          <Link className="primary-button landing-primary-cta" href="/chat?assistant=MARKETING">
-            Open the live salon demo
-            <span aria-hidden="true" className="landing-cta-arrow">→</span>
-          </Link>
-          <Link className="landing-text-link text-[var(--cobalt)]" href="/workspace">Open demo controls</Link>
+          <ul>
+            {trustRules.map((rule, index) => (
+              <li key={rule}><span>{String(index + 1).padStart(2, "0")}</span>{rule}</li>
+            ))}
+          </ul>
         </div>
       </section>
 
@@ -163,10 +165,7 @@ export function LandingPage() {
         <BrandMark className="landing-closing-mark" />
         <p className="landing-eyebrow">My Little Company</p>
         <h2 id="closing-title">One approved truth.<br />Every future answer gets better.</h2>
-        <Link className="primary-button landing-primary-cta" href="/chat?assistant=MARKETING">
-          Start the live salon demo
-          <span aria-hidden="true" className="landing-cta-arrow">→</span>
-        </Link>
+        <WaitlistCta />
       </section>
     </main>
   );

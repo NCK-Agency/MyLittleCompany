@@ -1,7 +1,8 @@
 # AWS Setup Guide
 
-This console-first guide creates the resources expected by the implemented AWS
-adapters. It does not create resources automatically.
+This guide creates the resources expected by the implemented AWS adapters. For
+the filmed demo, use the existing private source bucket and 1024-dimension S3
+Vectors index instead of creating replacements.
 
 ## 1. Choose one AWS Region
 
@@ -41,6 +42,18 @@ DYNAMODB_TABLE_NAME=
 ```
 
 The application should use condition expressions for candidate edits, approval transitions, and index-status updates.
+
+Enable DynamoDB TTL on the `ttl` attribute. The AWS demo bootstrap is
+idempotent and must run before the Cognito owner bootstrap:
+
+```bash
+pnpm bootstrap:aws-demo
+BOOTSTRAP_OWNER_EMAIL=owner@example.com pnpm bootstrap:cognito
+```
+
+`bootstrap:aws-demo` writes only the demo company profile and seeded demo
+memberships when absent. It does not write, replace, or delete approved
+knowledge.
 
 ## 3. S3 bucket
 
@@ -89,15 +102,24 @@ If a Guardrail is used, grant only the required Guardrail actions and resources.
 
 ## 5. Bedrock Knowledge Base
 
+If the developer role is denied IAM or Knowledge Base creation, use the exact
+least-privilege handoff in `docs/AWS_ADMIN_HANDOFF.md`. Do not widen the
+developer role.
+
 In **Amazon Bedrock → Knowledge Bases**, create a vector Knowledge Base:
 
 1. Choose the S3 data-source path.
 2. Select Titan Text Embeddings V2 (`amazon.titan-embed-text-v2:0`).
-3. Use the console's quick-create S3 Vectors option.
-4. Add the private bucket as the data source and restrict its inclusion prefix
+3. Select the existing S3 Vectors bucket and 1024-dimension index. Do not create
+   a second index for the demo.
+4. Add the existing private bucket as the data source and restrict its inclusion prefix
    to `memories/`.
-5. Save both the Knowledge Base ID and data source ID.
-6. Confirm the data source supports direct document ingestion.
+5. Set chunking to **No chunking**. Canonical memory documents are already
+   small, structured, and independently versioned. This choice is part of data
+   source creation and should be treated as irreversible; replace the data
+   source if the strategy must change.
+6. Save both the Knowledge Base ID and data source ID.
+7. Confirm the data source supports direct document ingestion.
 
 Set:
 
@@ -137,27 +159,38 @@ email profile` scopes, the Auth.js callback URL
 `/api/auth/callback/cognito`, and the configured post-logout URL. Configure the
 pool to use email as the sign-in alias and create a managed-login domain.
 
+Disable self-service sign-up in the user pool by selecting administrator-only
+account creation. The managed login must not offer public registration. New
+identities are created only when an owner invites someone through People & access;
+public visitors use `/waitlist` instead.
+
 The runtime role needs `cognito-idp:AdminGetUser` and
 `cognito-idp:AdminCreateUser` on this user pool for owner invitations. Configure
 the `COGNITO_*`, `AUTH_URL`, and `AUTH_SECRET` values from `.env.example`, then run:
 
 ```bash
+pnpm bootstrap:aws-demo
 BOOTSTRAP_OWNER_EMAIL=owner@example.com pnpm bootstrap:cognito
 ```
 
 This idempotently creates or reuses the first Cognito identity and writes its
-owner membership. Ownership is never inferred from an untrusted browser claim.
+owner membership. The command fails before touching Cognito if the company
+profile is missing. Ownership is never inferred from an untrusted browser claim.
 
 ### Cognito smoke path
 
-1. Open `/login`, continue to Cognito, and complete the owner's temporary-password change.
-2. Open **People & access**, invite a second email, and grant one department `READ`.
-3. Sign out and confirm Cognito returns to the configured application logout URL.
-4. Sign in as the invited user and confirm first login activates the membership.
-5. Verify company knowledge and the granted department are readable while a sibling department and Review are denied.
-6. As owner, add or remove a grant and confirm the next request reflects it without a new login.
-7. Pause the membership and confirm authentication completes but the app shows the no-access state.
-8. Restore access and confirm the member can use the permitted scope again.
+1. Open `/login` and confirm it offers the Cognito secure-sign-in handoff with no
+   public Create account or Sign up action. `/login-demo` remains the separate
+   credential-free local picker and is not used for this smoke path.
+2. Open `/waitlist`, submit an email twice, and confirm both requests show the same success message and one DynamoDB waitlist item exists.
+3. Continue to Cognito and complete the owner's temporary-password change.
+4. Open **People & access**, invite a second email, and grant one department `READ`.
+5. Sign out and confirm Cognito returns to the configured application logout URL.
+6. Sign in as the invited user and confirm first login activates the membership.
+7. Verify company knowledge and the granted department are readable while a sibling department and Review are denied.
+8. As owner, add or remove a grant and confirm the next request reflects it without a new login.
+9. Pause the membership and confirm authentication completes but the app shows the no-access state.
+10. Restore access and confirm the member can use the permitted scope again.
 
 ## 7. Suggested application-role capabilities
 
@@ -257,6 +290,7 @@ Log provider request IDs server-side, but do not expose raw stack traces or cred
 
 - [ ] Selected model can be invoked in the chosen Region.
 - [ ] DynamoDB table and `GSI1` exist.
+- [ ] DynamoDB TTL is enabled on `ttl`.
 - [ ] S3 bucket is private.
 - [ ] Knowledge Base and data source exist.
 - [ ] Direct ingestion succeeds from a test script.
@@ -267,6 +301,8 @@ Log provider request IDs server-side, but do not expose raw stack traces or cred
 - [ ] The salon end-to-end flow passes in AWS mode.
 - [ ] Cognito callback and logout URLs match the deployed `AUTH_URL`.
 - [ ] `pnpm bootstrap:cognito` creates or finds the immutable first owner.
+- [ ] `pnpm bootstrap:aws-demo` reports only created/existing profile and
+  membership records and leaves approved knowledge unchanged.
 - [ ] An owner invitation reaches the recipient and first login activates access.
 - [ ] `APP_BASE_URL` is the deployed HTTPS origin and `MCP_ENABLED=true` only
   after OAuth discovery and callback checks pass.

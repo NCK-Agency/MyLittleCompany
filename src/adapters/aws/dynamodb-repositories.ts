@@ -105,8 +105,9 @@ export class DynamoRepositories implements CompanyRepository, ConversationReposi
     return company;
   }
 
-  async resetDemo(): Promise<Company> {
+  async resetDemo(companyId: string): Promise<Company> {
     const company = structuredClone(demoFixture.company) as Company;
+    if (company.id !== companyId) throw new Error("FORBIDDEN");
     const existing = await this.client.send(new QueryCommand({
       TableName: this.tableName,
       KeyConditionExpression: "PK = :pk",

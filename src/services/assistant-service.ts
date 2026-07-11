@@ -1,4 +1,5 @@
 import type { ActorContext, GroundedAnswer, KnowledgeScope } from "@/domain/types";
+import { NO_APPROVED_COMPANY_RULE } from "@/domain/grounding";
 import type { ModelGateway } from "@/ports/model-gateway";
 import type { MemoryRetrievalService } from "./memory-retrieval-service";
 
@@ -26,7 +27,7 @@ export class AssistantService {
     });
     if (sources.length === 0) {
       return {
-        answer: generated.content,
+        answer: NO_APPROVED_COMPANY_RULE,
         groundingStatus: "NO_APPROVED_CONTEXT",
         sourceMemories: [],
       };

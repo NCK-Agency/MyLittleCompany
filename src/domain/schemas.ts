@@ -47,6 +47,22 @@ export const companyMembershipSchema = z.object({
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
+export const waitlistEntrySchema = z.object({
+  id: z.uuid(),
+  email: z.email().max(320).transform((value) => value.trim().toLowerCase()),
+  displayName: z.string().trim().min(1).max(120).optional(),
+  companyName: z.string().trim().min(1).max(160).optional(),
+  status: z.literal("WAITING"),
+  source: z.literal("PUBLIC_SITE"),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
+export const joinWaitlistSchema = z.object({
+  email: z.string().trim().max(320).pipe(z.email()).transform((value) => value.toLowerCase()),
+  displayName: z.string().trim().max(120).optional().transform((value) => value || undefined),
+  companyName: z.string().trim().max(160).optional().transform((value) => value || undefined),
+  website: z.string().trim().max(300).optional().transform((value) => value || undefined),
+});
 export const organizationalUnitSchema = z.object({
   id: z.string().min(1).max(128),
   companyId: z.string().min(1).max(128),

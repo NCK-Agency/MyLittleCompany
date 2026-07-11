@@ -2,6 +2,338 @@
 
 This is the live execution plan. Codex must update it before and during multi-file work. Keep completed items and verification evidence so future sessions can understand what actually happened.
 
+## Active checkpoint: secondary link-button contrast
+
+**Outcome:** Keep secondary link-buttons readable when they appear inside a
+light-on-dark container, including the dashboard's `New conversation` action.
+
+**Affected files:** Global anchor/button cascade, the dashboard action classes,
+the focused workspace browser regression, and this plan.
+
+**Implementation steps:**
+
+- [x] Add a browser assertion for the rendered foreground and background colors.
+- [x] Remove the unlayered anchor color override so the button component color wins.
+- [x] Remove the ineffective one-off utility override from the dashboard action.
+- [x] Run focused browser verification, lint, typecheck, tests, and build.
+
+**Verification (2026-07-11):** The browser regression first failed with the
+actual white foreground (`rgb(255, 255, 255)`), then passed after the cascade
+fix with cobalt-deep text (`rgb(18, 49, 138)`) on the surface background
+(`rgb(255, 253, 248)`). Focused E2E, lint, typecheck, and production build pass.
+The full unit run passed 113 of 114 tests; the unrelated, concurrently changed
+repository knowledge-index test expects score `2` but receives `3`. Production
+deployment was intentionally not run while that repository-wide gate is red and
+the working tree contains unrelated changes. The current live Netlify CSS was
+confirmed to still contain the pre-fix unlayered anchor color override.
+
+**Rollback:** Restore the global anchor color declaration and the prior dashboard
+class. No data, authentication, or infrastructure state changes.
+
+## Active checkpoint: consolidate Codex work and assess demo readiness
+
+**Outcome:** Preserve all intentional repository work, verify the current product
+against the complete salon demo and trust requirements, resolve any verified
+release blockers, consolidate every `codex/*` branch into `main`, and publish the
+result to GitHub without force-pushing or dropping history.
+
+**Affected files:** This live plan plus only files required to fix verified
+pre-landing findings; local `codex/*` and `main` refs; `origin/main`. Existing
+AWS resources, Netlify state, credentials, and application data are not changed.
+
+**Implementation steps:**
+
+- [x] Audit the current implementation and tests against all ten salon-demo steps,
+  the P0 backlog, security boundaries, and the latest durable decisions.
+- [x] Inspect every local and remote `codex/*` branch, confirm ancestry and merge
+  order, and review all tracked and untracked work for secrets or generated noise.
+- [x] Run focused pre-landing review, fix verified blockers, and execute lint,
+  typecheck, unit tests, production build, E2E, and diff-hygiene checks.
+- [ ] Commit the complete intentional working tree, fast-forward or merge it into
+  `main`, verify the final tree, and push `main` to GitHub.
+- [ ] Record exact verification, commit, push, remaining demo gaps, and rollback
+  evidence in this checkpoint.
+
+**Pre-landing review (2026-07-11):** The deterministic local product implements
+and passes the complete ten-step salon proof: load the company, teach Marketing
+the 15% maximum and free-add-on preference, review and approve the suggestion,
+persist and retrieve approved truth, generate a compliant promotion and SOP, and
+answer an employee's 25%-off question with the approved source and rationale.
+The review also fixed role and company-scope leaks, historical-version exposure,
+irrelevant retrieval, unsupported citations, secret retention, source-less SOPs,
+import retention, demo reset scope, public waitlist durability, and the missing
+prompt-injection regression.
+
+**Verification before integration (2026-07-11):** Focused trust and persistence
+regressions pass (10 files, 61 tests). `pnpm lint`, `pnpm typecheck`, all 116 unit
+tests, `pnpm build`, all nine Playwright flows, `git diff --check`, and the full
+comparison against `origin/main` pass. The secret scan found only deliberately
+fake credentials in screening tests. `deno.lock` was confirmed as unrelated
+generated output and excluded. There is one worktree, no stash, and no remote
+`codex/*` branch; both local Codex branches started from the same commit already
+contained by local `main`.
+
+**Remaining demo gaps:** The local competition path is demo-ready, but the
+hosted AWS plus private ChatGPT claim remains gated by a successful live AWS
+smoke, Bedrock quota and prompt-injection evaluation, Cognito/OAuth browser
+proof, and ChatGPT's exact three-tool acceptance sequence. Before broad public
+launch, add edge rate limiting for the waitlist. Before treating hosted reset as
+reliable, delete or quarantine its derived S3 and Bedrock documents. Chat turns
+also need resumable state so a retry can recover after a mid-turn provider
+failure. The presenter script should be reconciled with the canonical salon
+sequence before recording the final demo.
+
+**Rollback:** Keep the consolidated commit reachable from its `codex/*` branch.
+If a post-merge issue appears, create an explicit revert commit on `main`; do not
+rewrite or force-push shared history. No cloud or production-data rollback is
+required for this repository-only consolidation.
+
+## Active checkpoint: waitlist-aligned landing story
+
+**Outcome:** Make the public landing page tell one honest conversion story while
+registration remains closed: visitors understand the product through the
+concrete company-rule proof, then join the waitlist instead of entering the demo
+or seeing public demo controls.
+
+**Affected files:** Landing component and landing-only styles; public header and
+focused Home/browser assertions; durable product, UX, design, and decision
+documentation; this live plan. Existing waitlist persistence, invited-user sign
+in, product routes, and demo data remain unchanged.
+
+**Implementation steps:**
+
+- [x] Route every anonymous landing-page primary action to `/waitlist` with the
+  label `Join the waitlist`; retain `Sign in` for invited users.
+- [x] Tighten the hero explanation, add a private-beta expectation, move the
+  concrete company-rule proof directly below the hero, and remove the public
+  demo-controls link.
+- [x] Merge the repeated approval and AI-trust sections into one shorter
+  governed-memory explanation.
+- [x] Update focused unit/browser assertions and the superseding public-CTA
+  decision, then run lint, typecheck, tests, build, and responsive live QA.
+
+**Verification (2026-07-11):** `pnpm lint`, `pnpm typecheck`, all 107 unit tests,
+`pnpm build`, and the two focused public landing/waitlist Playwright flows pass.
+Responsive local QA passed at 375, 768, and 1280 pixels. The browser flow also
+found and verified the fix for the Demo mode badge intercepting the header CTA;
+the badge now sits outside the header at the bottom-right and ignores pointer
+events. Netlify deploy `6a527186a64fe8a011396055` is live at
+`https://my-little-company-demo.netlify.app`. Live DOM verification confirms all
+three main CTAs point to `/waitlist`, the concrete proof follows the hero, and no
+public demo-control link remains. An independent Playwright capture confirmed the
+public visual render after the audit browser produced a corrupted screenshot.
+
+**Rollback:** Restore the prior `Start a company project` links and section order,
+reinstate the standalone trust section and demo-controls link, and revert the
+associated assertions and documentation together. No waitlist records, accounts,
+memberships, or deployment secrets are changed by this checkpoint.
+
+## Active checkpoint: separate Cognito and demo login entry points
+
+**Outcome:** Move the seeded local account picker from `/login` to
+`/login-demo`, and make `/login` a focused, invite-only entry point that hands
+authentication, password recovery, and account recovery to Amazon Cognito
+Managed Login through the existing Auth.js provider.
+
+**Affected files:** Login routes and shared return-path handling, protected-route
+redirect behavior, browser coverage, authentication UX/product decisions,
+environment guidance, and this plan. Existing identity providers, membership
+authorization, Cognito resources, and company data remain unchanged.
+
+**Implementation steps:**
+
+- [x] Add `/login-demo` with the existing seeded account picker and make its
+  demo-only purpose explicit.
+- [x] Replace `/login` with a branded Cognito Managed Login handoff, safe error
+  copy, closed-registration guidance, and a truthful local-mode fallback.
+- [x] Route unauthenticated demo traffic to `/login-demo` while keeping Cognito
+  traffic on `/login`; preserve validated same-origin return paths.
+- [x] Update browser tests and durable UX/decision documentation for the split.
+- [x] Run focused tests, then lint, typecheck, unit tests, build, E2E, and diff
+  hygiene; record verification results and remaining risks.
+
+**Verification:** Focused login-navigation tests; `pnpm lint`, `pnpm typecheck`,
+`pnpm test`, `pnpm build`, `pnpm test:e2e`, and `git diff --check`. A real
+Cognito browser smoke remains environment-dependent and must not be reported as
+passed without completing Managed Login.
+
+**Verification results (2026-07-11):**
+
+```text
+Focused navigation tests: PASS (4 tests)
+pnpm lint:              PASS
+pnpm typecheck:         PASS
+pnpm test:              PASS (27 files, 105 tests)
+pnpm build:             PASS (/login and /login-demo both emitted)
+Focused login E2E:      PASS (3 tests, including the route split)
+Full pnpm test:e2e:     UNSTABLE under concurrent workspace edits
+Scoped git diff check:  PASS
+Real Cognito smoke:     NOT RUN (current environment is demo mode)
+```
+
+The login-separation browser test passed on every run. The latest full suite ran
+nine tests and passed seven, including the login test, but failed one onboarding
+navigation and one salon response assertion while Next.js reported a Fast
+Refresh full reload. Files and tests from the separate Bedrock/workspace work
+changed during verification, including a new browser spec appearing between full
+runs. A prior full run passed seven of eight and failed at a different salon
+step after a development-server JSON parse error. These failures are not being
+treated as login regressions or reported as a passing full E2E gate. Repo-wide
+`git diff --check` also reports pre-existing trailing blank lines in concurrently
+restored Bedrock files; every file scoped to this login checkpoint is clean.
+
+**Login-page refinement (2026-07-11):** Remove the secure-handoff explanation
+and local demo-access callout from `/login`. Replace them with one validated
+email field that passes the address to Cognito as an OAuth `login_hint`;
+Cognito continues to handle authentication. Keep `/login-demo` available only
+through its direct route and demo-mode protected-route redirects.
+
+**Refinement verification:** Targeted lint, typecheck, four focused navigation
+tests, production build, and the focused login browser test pass. Repository-wide
+lint remains blocked by the concurrent `react-hooks/set-state-in-effect` finding
+in `src/components/waitlist-form.tsx`; the login files are clean.
+
+**Rollback:** Restore the combined environment-aware `/login` page, point demo
+protected-route redirects back to `/login`, remove `/login-demo`, and revert the
+route-specific tests and documentation. No identity or company data migration is
+required.
+
+## Active checkpoint: reliable Netlify rebuild and favicon
+
+**Outcome:** Redeploy the current public site without rotating the production
+session secret, and expose the existing four-fragment brand mark as the browser
+favicon.
+
+**Affected files:** Environment normalization, focused environment tests, root
+metadata, and this plan. No production secret value, authentication mode, or
+company data changes.
+
+**Implementation steps:**
+
+- [x] Treat provider-masked secrets shorter than their contract or redacted with
+  asterisks as unavailable during optional local/demo builds while preserving
+  required-mode failures.
+- [x] Add the existing SVG brand mark to Next.js favicon metadata.
+- [x] Run focused tests and the production build.
+- [x] Deploy to Netlify production and verify the live favicon, homepage, and waitlist.
+
+**Verification (2026-07-11):** `pnpm lint`, `pnpm typecheck`, all 90 unit tests,
+the focused six-test environment suite, and `pnpm build` pass. Netlify deploy
+`6a526976dde9e769b6744bd2` is live at
+`https://my-little-company-demo.netlify.app`. The public homepage and `/waitlist`
+return `200` and emit both `icon` and `shortcut icon` links to
+`/brand/mlc-app-icon.svg`; the SVG returns `200` as `image/svg+xml`. No production
+secret was changed or rotated.
+
+**Rollback:** Restore exact-empty-only secret normalization and remove the icon
+metadata. The prior successful Netlify deployment remains available for rollback.
+
+## Superseded checkpoint: remove Bedrock and simplify the runtime
+
+Superseded by the presenter-approved hosted AWS and ChatGPT checkpoint and
+ADR-035. Preserve this section as decision history; do not execute its removal
+steps.
+
+**Outcome:** Stop treating AWS AI/ML as a competition requirement. Remove the
+Amazon Bedrock model and Knowledge Base implementations, configuration, tests,
+smoke path, and setup guidance. Keep the governed-memory product loop unchanged:
+human approval remains authoritative, deterministic fixture behavior handles the
+demo, and a small repository-backed lexical index makes approved knowledge
+available without embeddings or external model capacity.
+
+**Affected files:** Composition and environment configuration; model/index
+adapters and focused tests; package dependencies and scripts; repository working
+agreements; product, architecture, data, security, build, deployment, demo, and
+decision documentation. Existing DynamoDB, S3, Cognito, waitlist, OAuth/MCP,
+domain, and UI work remains in place unless a Bedrock-specific dependency makes a
+targeted adjustment necessary.
+
+**Implementation steps:**
+
+- [ ] Add a superseding architecture decision and align durable product truth
+  with the local-first, provider-neutral direction.
+- [ ] Replace the Bedrock model/index composition with the fixture model and a
+  repository-backed lexical index in every runtime mode.
+- [ ] Remove Bedrock SDK packages, adapters, tests, environment variables, AWS
+  smoke scripts, and obsolete Knowledge Base handoff material.
+- [ ] Update customer-facing search wording and deployment/demo guidance so no
+  surface claims Bedrock, vectors, embeddings, or a real model-backed path.
+- [ ] Run focused tests, then `pnpm lint`, `pnpm typecheck`, `pnpm test`,
+  `pnpm build`, and `git diff --check`; record results and remaining risks.
+
+**Verification:** Repository/index and environment tests; full lint, typecheck,
+unit, and production-build checks; `git diff --check`. The existing local E2E
+salon journey remains the acceptance proof when browser execution is available.
+
+**Rollback:** Restore the removed Bedrock adapters, dependencies, tests, scripts,
+and documentation together, then reinstate the prior environment contract. No
+AWS resource is modified or deleted by this checkpoint.
+
+## Active checkpoint: tomorrow-ready hosted AWS and ChatGPT demo
+
+**Outcome:** Turn the already verified product and connector code into one
+resettable filmed demo running on real Bedrock, DynamoDB, private S3, Bedrock
+Knowledge Bases with the existing S3 Vectors index, Cognito, Netlify, and a
+private ChatGPT Developer Mode app. Preserve local mode as an explicitly labelled
+fallback; never simulate a successful external connection.
+
+**Affected files:** AWS demo bootstrap and package scripts; deployment, AWS,
+ChatGPT, demo-script, backlog, and live-plan documentation; focused bootstrap
+tests where practical. Existing domain types, public routes, seven memory types,
+and MCP tool contracts remain unchanged.
+
+**Implementation steps:**
+
+- [x] Add an idempotent AWS demo bootstrap that creates the demo company profile
+  and seeded demo memberships without overwriting approved knowledge.
+- [x] Make Cognito owner bootstrap fail clearly when the company profile has not
+  been created, preventing an orphaned membership.
+- [ ] Provision and verify the missing DynamoDB, Bedrock Knowledge Base/data
+  source, Cognito, runtime-identity, and Netlify resources using the existing S3
+  bucket, S3 Vectors index, Nova Lite, and Titan Embeddings V2 configuration.
+- [ ] Run the real AWS smoke and AWS-backed browser flow, then verify public OAuth
+  discovery, MCP authentication, Cognito login, reset/reload persistence, and the
+  exact ChatGPT search/fetch/suggest contract.
+- [x] Replace the broad demo script with the agreed onboarding, chat, approval,
+  Playbook version, and ChatGPT sequence; record truthful fallback and post-demo
+  credential cleanup instructions.
+
+**Current evidence (2026-07-11):** local lint, typecheck, 105 tests, production
+build, nine browser tests against the stable production server, and diff hygiene
+pass. DynamoDB
+`my-little-company-demo` is active with `GSI1` and TTL;
+`bootstrap:aws-demo` is idempotent and produced only one profile plus four demo
+memberships. Cognito pool, confidential client, managed-login domain, confirmed
+Maya owner, and OAuth JWK exist. Knowledge Base `U5Z8X6SINM`, no-chunking data
+source `Z575GQ7BCZ`, the exact-trust Bedrock service role, and the dedicated
+Netlify runtime user/key exist. App-specific AWS credentials are stored as
+non-readable Netlify production secrets because Netlify reserves the standard
+AWS credential names.
+
+The AWS smoke gate failed before writing disposable data because Nova returned
+`Too many tokens per day`. Initial Knowledge Base ingestion also received Titan
+429 throttling. Per the fallback ladder, the public deployment remains
+`APP_MODE=local`, `AUTH_MODE=demo`, `MCP_ENABLED=false`, and visibly labelled
+**Demo mode**. Verified fallback deploy `6a527036d813d38f9b86c536` is live at
+`https://my-little-company-demo.netlify.app`; `/mcp` truthfully returns `404`.
+The ignored `.env.local` contains only the AWS profile and non-secret resource
+IDs, and `pnpm smoke:aws` loads it automatically for the next quota-window retry.
+The permanent Cognito authorize URL accepts the exact Netlify callback and
+redirects to managed login. The local browser hydration race found during final
+verification is fixed by keeping onboarding and waitlist controls disabled until
+hydration. ADR-035 supersedes the conflicting Bedrock-removal decision.
+
+**Verification:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`,
+`pnpm smoke:aws`, `AUTH_MODE=demo pnpm test:e2e:aws`, `pnpm test:e2e`, public
+OAuth/MCP endpoint checks, manual Cognito sign-in, ChatGPT search/fetch/suggest,
+and `git diff --check`.
+
+**Rollback:** Disable `MCP_ENABLED`, return the app to `APP_MODE=local` and
+`AUTH_MODE=demo`, unlink or remove only the new Netlify demo site, and delete only
+resources created for this checkpoint. Existing S3 source/vector buckets,
+approved local data, and application contracts remain untouched. Rotate or
+delete any disposable Netlify AWS access key immediately after the presentation.
+
 ## Active checkpoint: hackathon AWS architecture refresh
 
 **Outcome:** Replace the broad implementation-oriented architecture document with
@@ -1056,3 +1388,154 @@ full-width mobile CTAs. No route or product behavior changed.
 
 **Rollback:** Remove the landing CTA modifier styles and restore the prior link
 labels. No routes, product behavior, or application data are affected.
+
+## Active checkpoint: waitlist-only public access
+
+**Outcome:** Keep public account registration closed, give interested visitors a
+real waitlist flow, and leave account creation exclusively in the existing
+owner-invitation path rather than exposing a signup action in public navigation.
+
+**Affected files:** Public header and login copy, a new waitlist page/form/API,
+validated waitlist domain and repository boundaries, local and DynamoDB adapters,
+focused tests, environment/deployment guidance, and the relevant product, UX,
+security, API, data-model, backlog, and decision documentation.
+
+**Implementation steps:**
+
+- [x] Add a validated, idempotent public waitlist submission contract.
+- [x] Persist waitlist entries locally and in the configured DynamoDB table.
+- [x] Add a visible `Join waitlist` path without adding a visible `Create account` link.
+- [x] Keep deployed Cognito self-registration disabled; owners create invited
+  accounts through People & access.
+- [x] Cover duplicate submissions, bot-trap behavior, UI success/error states,
+  and the public route with unit and browser tests.
+- [x] Run lint, typecheck, unit tests, build, E2E, and responsive browser checks.
+
+**Verification results (2026-07-11):**
+
+```text
+pnpm lint:       PASS
+pnpm typecheck:  PASS
+pnpm test:       PASS (25 files, 97 tests)
+pnpm build:      PASS (Next.js 16.2.10 webpack; /waitlist and /api/waitlist)
+pnpm test:e2e:   PASS (7 Chromium tests)
+Responsive QA:   PASS (1280px desktop, 768px tablet, 375px mobile)
+Overflow audit:  PASS
+Console audit:   PASS (no page errors; font preload warnings only after HMR)
+Public boundary: PASS (no visible Create account link; waitlist creates no membership)
+git diff --check: PASS
+```
+
+The AWS SDK v3 guidance shaped the deployed adapter: one reusable DocumentClient,
+a bare `PutCommand` with a conditional uniqueness check, a consistent `GetCommand`
+on duplicate races, explicit service-exception handling, and Zod validation before
+and after persistence.
+
+**Rollback:** Remove the waitlist route, service, adapters, public links, and
+documentation. Existing Cognito login, memberships, invitations, and company
+access remain unchanged.
+
+## Active checkpoint: business-neutral landing page
+
+**Outcome:** Remove salon-specific language from the public landing page so the
+product speaks to any small-business owner. Keep the existing governed-memory
+proof and Marketing handoff, but label the primary action explicitly as
+`Start a company project`.
+
+**Affected files:** `src/components/landing-page.tsx`, focused Home and browser
+tests, `docs/PROJECT_MEMORY.md`, `docs/UX_SPEC.md`, `docs/DECISION_LOG.md`, and
+this plan. The demo fixture, chat route, and salon-specific in-product scenario
+remain unchanged.
+
+**Implementation steps:**
+
+- [x] Replace every public landing-page use of `salon` with company-neutral
+  owner and business language.
+- [x] Change all primary landing actions to `Start a company project` while
+  preserving the direct Marketing workspace destination.
+- [x] Record the revised landing-page scope in the durable product, UX, and
+  decision documentation.
+- [x] Update focused tests and run lint, typecheck, unit tests, build, and the
+  relevant browser flow; record exact results.
+
+**Verification:** Confirm no case-insensitive `salon` reference remains in the
+landing component, all three primary actions use the new label and Marketing
+route, focused tests pass, and `git diff --check` is clean.
+
+**Verification results (2026-07-11):**
+
+```text
+Landing copy audit: PASS (0 salon references; 3 explicit project actions)
+pnpm typecheck:     PASS
+pnpm test:          PASS (24 files, 90 tests)
+pnpm build:         PASS (Next.js 16.2.10 webpack production build)
+Focused E2E:        PASS (2 Chromium tests)
+git diff --check:   PASS
+pnpm lint:          BLOCKED by pre-existing react-hooks/set-state-in-effect in
+                    src/components/onboarding/onboarding-goal.tsx:22
+Full E2E:           4 passed, 3 unrelated failures in access control,
+                    onboarding navigation, and the governed salon workflow
+```
+
+**Rollback:** Restore the former salon-specific landing copy, CTA labels, tests,
+and documentation decision. No application data, route, or demo fixture changes
+are involved.
+
+## Active checkpoint: simple company dashboard
+
+**Outcome:** Refactor `/workspace` into a calm, role-aware dashboard that helps a
+person resume their latest conversation, review suggested company knowledge when
+they have approval access, and browse the approved knowledge they are allowed to
+read.
+
+**Affected files:** `src/components/home-dashboard.tsx`, the conversation deep-link
+handoff in `src/components/chat-workspace.tsx`, the mobile signed-in shell treatment
+in `src/components/app-shell.tsx`, focused unit and browser tests, `docs/UX_SPEC.md`,
+and this plan. Repository, authorization, lifecycle, and API contracts remain
+unchanged.
+
+**Implementation steps:**
+
+- [x] Replace the oversized educational workspace hero with a compact company
+  overview and three clear dashboard sections.
+- [x] Load the already scoped conversation list and expose only its most recently
+  active item, with an empty state that starts a new conversation.
+- [x] Show suggested knowledge only to people who can approve it; never imply
+  that a suggestion is trusted company truth.
+- [x] Show a concise list and count of approved knowledge returned by the existing
+  server-scoped memory endpoint.
+- [x] Add a conversation query parameter so the latest-chat action reopens the
+  selected persisted conversation.
+- [x] Preserve owner-only profile, onboarding, people/access, and demo-reset
+  controls without competing with the main dashboard tasks.
+- [x] Run focused tests, lint, typecheck, unit tests, build, and relevant browser
+  verification; record exact results.
+
+**Verification:** Check owner, approver, and read-only visibility; verify the
+latest-conversation deep link; inspect desktop and mobile layouts; run
+`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and focused E2E coverage.
+
+**Rollback:** Restore the prior `HomeDashboard`, remove the conversation deep-link
+handling and focused tests, and revert this documentation checkpoint. No stored
+company data or authorization behavior is affected.
+
+**Verification results (2026-07-11):**
+
+```text
+Dashboard unit tests: PASS (2 role-aware tests)
+pnpm typecheck:       PASS
+pnpm test:            PASS (28 files, 107 tests)
+pnpm build:           PASS (Next.js 16.2.10 webpack; /workspace and /chat)
+Focused changed lint: PASS
+Focused dashboard E2E: PASS (latest chat resume plus 390px overflow audit)
+Rendered visual QA:   PASS (desktop and mobile); fixed low-contrast secondary action
+Full E2E:             8/9 PASS; unrelated ChatGPT-import onboarding scenario
+                      remains flaky during dev reload/hydration
+pnpm lint:            BLOCKED by pre-existing react-hooks/set-state-in-effect in
+                      src/components/waitlist-form.tsx:15
+```
+
+The scoped design review kept the page as an app workspace rather than a card
+mosaic: one primary work panel, one conditional review panel, and a list-like
+Playbook preview. The full design-review commit workflow was not used because the
+working tree already contained substantial uncommitted user changes.

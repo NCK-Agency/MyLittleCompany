@@ -21,6 +21,10 @@ export const metadata: Metadata = {
   title: "My Little Company",
   description:
     "Turn everyday owner conversations into trusted, reusable company knowledge.",
+  icons: {
+    icon: [{ url: "/brand/mlc-app-icon.svg", type: "image/svg+xml", sizes: "any" }],
+    shortcut: "/brand/mlc-app-icon.svg",
+  },
 };
 
 export default async function RootLayout({

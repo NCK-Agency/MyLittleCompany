@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
 import type { OnboardingSessionView } from "./onboarding-types";
@@ -12,8 +12,13 @@ const examples = [
   "What process should the team follow every time?",
 ];
 
+const subscribeToHydration = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 export function OnboardingGoal() {
   const router = useRouter();
+  const hydrated = useSyncExternalStore(subscribeToHydration, getClientSnapshot, getServerSnapshot);
   const [question, setQuestion] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
@@ -44,6 +49,7 @@ export function OnboardingGoal() {
           <textarea
             autoFocus
             className="text-input min-h-28"
+            disabled={!hydrated || busy}
             maxLength={500}
             onChange={(event) => setQuestion(event.target.value)}
             placeholder="For example: Can the front desk offer 25% off?"
@@ -51,11 +57,11 @@ export function OnboardingGoal() {
           />
         </label>
         <div className="onboarding-examples" aria-label="Example questions">
-          {examples.map((example) => <button key={example} onClick={() => setQuestion(example)} type="button">{example}</button>)}
+          {examples.map((example) => <button disabled={!hydrated || busy} key={example} onClick={() => setQuestion(example)} type="button">{example}</button>)}
         </div>
         <div className="onboarding-actions">
-          <button className="primary-button" disabled={busy || question.trim().length < 3} onClick={() => void continueSetup()} type="button">Choose context <span aria-hidden="true">→</span></button>
-          <button className="quiet-button" onClick={() => router.push("/workspace")} type="button">Do this later</button>
+          <button className="primary-button" disabled={!hydrated || busy || question.trim().length < 3} onClick={() => void continueSetup()} type="button">Choose context <span aria-hidden="true">→</span></button>
+          <button className="quiet-button" disabled={!hydrated || busy} onClick={() => router.push("/workspace")} type="button">Do this later</button>
         </div>
         <p aria-live="polite" className="onboarding-status">{status}</p>
       </section>

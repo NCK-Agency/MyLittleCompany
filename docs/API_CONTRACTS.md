@@ -43,6 +43,8 @@ Exact routing may use Next.js route handlers or server actions. Preserve these l
 ### Authentication and membership routes
 
 - `GET|POST /api/auth/[...nextauth]` handles Auth.js demo or Cognito login.
+- `POST /api/waitlist` accepts a validated public waitlist request. It creates no
+  identity or membership and returns the same success shape for new and duplicate emails.
 - `GET /api/me` returns the actor resolved from the current active membership.
 - `GET /api/memberships` lists members for an owner.
 - `POST /api/memberships` invites an identity with roles and scoped grants.

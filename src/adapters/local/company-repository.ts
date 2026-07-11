@@ -16,7 +16,8 @@ export class LocalCompanyRepository implements CompanyRepository {
     return company;
   }
 
-  async resetDemo(): Promise<Company> {
+  async resetDemo(companyId: string): Promise<Company> {
+    if (getDemoState().company.id !== companyId) throw new Error("FORBIDDEN");
     return resetDemoState().company;
   }
 }

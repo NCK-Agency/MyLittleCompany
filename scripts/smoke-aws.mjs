@@ -20,7 +20,6 @@ if (missing.length > 0) {
   console.error(`AWS smoke configuration is incomplete: ${missing.join(", ")}`);
   process.exit(1);
 }
-
 const region = process.env.AWS_REGION;
 const modelId = process.env.BEDROCK_MODEL_ID;
 const knowledgeBaseId = process.env.BEDROCK_KNOWLEDGE_BASE_ID;

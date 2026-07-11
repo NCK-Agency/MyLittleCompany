@@ -17,6 +17,7 @@ const navigation = [
 
 export function AppShell({ children, viewer }: { children: React.ReactNode; viewer: ActorContext | null }) {
   const pathname = usePathname();
+  const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE !== "false";
   const owner = Boolean(viewer && isOwner(viewer));
   const canUseChat = owner || Boolean(viewer?.grants.some((grant) =>
     grant.permission === "READ" || grant.permission === "SUGGEST" || grant.permission === "APPROVE"));
@@ -65,11 +66,17 @@ export function AppShell({ children, viewer }: { children: React.ReactNode; view
                 <span aria-hidden="true" className="status-dot" />
                 {viewer.displayName}
               </Link>
-              <SignOutButton />
+              <SignOutButton className="quiet-button whitespace-nowrap" />
             </div>
-          ) : <Link className="demo-company-badge" href="/login">Sign in</Link>}
+          ) : (
+            <div className="public-access-actions">
+              <Link className="public-sign-in" href="/login">Sign in</Link>
+              <Link className="public-waitlist-link" href="/waitlist">Join the waitlist</Link>
+            </div>
+          )}
         </div>
       </header>
+      {demoMode ? <span className="demo-mode-label">Demo mode</span> : null}
       {children}
     </div></ViewerProvider>
   );

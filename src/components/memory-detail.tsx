@@ -232,7 +232,7 @@ export function MemoryDetail({ memoryId }: { memoryId: string }) {
               {memory.record.indexStatus === "FAILED" && owner && <button className="secondary-button mt-4" disabled={busy} onClick={() => void retryIndex()} type="button">Retry assistant search</button>}
               {memory.record.indexDocumentId && (
                 <details className="mt-4 text-xs leading-5 text-[var(--muted)]">
-                  <summary className="cursor-pointer font-bold text-[var(--cobalt-deep)]">Knowledge Base details</summary>
+                  <summary className="cursor-pointer font-bold text-[var(--cobalt-deep)]">Search details</summary>
                   <p className="mt-2 break-all">Document: {memory.record.indexDocumentId}</p>
                 </details>
               )}

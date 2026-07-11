@@ -10,7 +10,10 @@ const updateCompanySchema = z.object({
 });
 
 export class CompanyService {
-  constructor(private readonly companies: CompanyRepository) {}
+  constructor(
+    private readonly companies: CompanyRepository,
+    private readonly demoCompanyId: string,
+  ) {}
 
   async get(actor: ActorContext): Promise<Company> {
     const company = await this.companies.get(actor.companyId);
@@ -26,7 +29,7 @@ export class CompanyService {
   }
 
   async resetDemo(actor: ActorContext): Promise<Company> {
-    if (!isOwner(actor)) throw appError("FORBIDDEN");
-    return this.companies.resetDemo();
+    if (!isOwner(actor) || actor.companyId !== this.demoCompanyId) throw appError("FORBIDDEN");
+    return this.companies.resetDemo(actor.companyId);
   }
 }

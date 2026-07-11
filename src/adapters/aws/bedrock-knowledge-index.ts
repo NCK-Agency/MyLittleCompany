@@ -21,7 +21,6 @@ import type { KnowledgeIndex } from "@/ports/knowledge-index";
 function stringMetadata(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
-
 function numberMetadata(value: unknown): number | undefined {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : undefined;
 }

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 async function signInAsOwner(page: import("@playwright/test").Page): Promise<void> {
-  await page.goto("/login");
+  await page.goto("/login-demo");
   await page.getByRole("button", { name: /Maya.*OWNER/i }).click();
   await expect(page).toHaveURL(/\/workspace/);
 }
@@ -58,7 +58,9 @@ test("completes the governed salon memory loop", async ({ page }) => {
   const answer = page.getByTestId("employee-answer");
   await expect(answer).toContainText(/No/i);
   await expect(answer).toContainText("15%");
+  await expect(answer).toContainText(/protect margins and premium positioning/i);
   await expect(answer).toContainText(/Source · .*15%/);
+  await expect(answer).toContainText(/Approved \d/);
 
   await page.getByRole("button", { name: /Tuesdays are quiet.*Marketing/i }).click();
   await expect(page.getByLabel("Message Marketing")).toBeVisible();

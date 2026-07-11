@@ -318,3 +318,18 @@ Malicious imported text:
 - Unapproved content carries a 30-day deletion time; no-candidate imports carry 24 hours; all-ignored imports carry seven days. Approved-source content is retained until owner deletion.
 - Owner deletion tombstones raw content while preserving the source label, checksum, and citation metadata required for an auditable approved memory.
 - Every session, batch, item, source, candidate, lease, proof, and deletion operation is company-scoped on the server. The onboarding UI is not an authorization boundary.
+
+## 13. Public waitlist and registration controls
+
+- Cognito self-service registration is disabled. Only owner invitations create
+  identities that can activate a company membership.
+- The public waitlist creates no Cognito identity, Auth.js session, membership,
+  role, grant, or company record.
+- Normalize and validate emails before storage; use a hashed email partition key
+  and a conditional write so retries do not create duplicates.
+- Return the same success response for first and repeated submissions to avoid
+  email-enumeration behavior.
+- A hidden honeypot field absorbs basic bot submissions without persisting them.
+- Store only email, optional name/company, source, status, and timestamps. Do not
+  log the submitted personal data.
+- Rate-limit `/api/waitlist` at the deployment edge before a broad public launch.

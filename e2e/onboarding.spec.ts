@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 async function signInAsOwner(page: import("@playwright/test").Page): Promise<void> {
-  await page.goto("/login");
+  await page.goto("/login-demo");
   await page.getByRole("button", { name: /Maya.*OWNER/i }).click();
   await expect(page).toHaveURL(/\/workspace/);
   await page.request.post("/api/demo/reset");

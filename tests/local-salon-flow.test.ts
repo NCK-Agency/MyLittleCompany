@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { resetDemoState } from "@/adapters/local/demo-state";
+import { getDemoState, resetDemoState } from "@/adapters/local/demo-state";
 import { employeeActor, ownerActor } from "@/server/actors";
 import { assistantService, conversationService, memoryService, sopService } from "@/server/container";
 
@@ -103,6 +103,18 @@ describe("local salon flow", () => {
     const duplicate = await conversationService.send(conversation.id, input, ownerActor());
     expect(duplicate.assistantMessage).toBeNull();
     expect(await conversationService.listMessages(conversation.id, ownerActor())).toHaveLength(2);
+  });
+
+  it("rejects likely secrets before persisting a chat message or source", async () => {
+    const conversation = await conversationService.create({ assistantRole: "MARKETING", title: "Private key check" }, ownerActor());
+    const sourcesBefore = getDemoState().sources.length;
+
+    await expect(conversationService.send(conversation.id, {
+      content: "Please remember api_key=sk-proj-abcdefghijklmnopqrstuvwxyz123456",
+      idempotencyKey: "secret-message-key",
+    }, ownerActor())).rejects.toThrow("VALIDATION_ERROR");
+    expect(await conversationService.listMessages(conversation.id, ownerActor())).toEqual([]);
+    expect(getDemoState().sources).toHaveLength(sourcesBefore);
   });
 
   it("lists and reopens scoped conversations", async () => {

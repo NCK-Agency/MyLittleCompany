@@ -70,6 +70,15 @@ describe("MemoryRetrievalService", () => {
     expect(await new MemoryRetrievalService(new HitIndex([hit()]), new MemoryStore(stored)).retrieve("discount", owner)).toHaveLength(1);
   });
 
+  it("does not let a selected assistant role expand a member's business-role access", async () => {
+    const stored = memory({ appliesToRoles: ["MARKETING"] });
+    const service = new MemoryRetrievalService(new HitIndex([hit()]), new MemoryStore(stored));
+
+    expect(await service.retrieve("campaign", actor, ["MARKETING"])).toEqual([]);
+    expect(await service.retrieve("campaign", { ...actor, roles: ["OWNER"], grants: [] }, ["MARKETING"]))
+      .toHaveLength(1);
+  });
+
   it("deduplicates multiple chunks from the same memory version", async () => {
     expect(await new MemoryRetrievalService(new HitIndex([hit(), hit({ score: 0.5 })]), new MemoryStore(memory())).retrieve("discount", actor)).toHaveLength(1);
   });

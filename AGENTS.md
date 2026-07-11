@@ -71,16 +71,15 @@ Treat this project as a competition demo with a strong bias toward winning throu
 - Next.js App Router with React and Tailwind CSS.
 - `pnpm` for package management.
 - Zod for runtime validation at every external boundary.
-- Amazon Bedrock for model inference.
-- Amazon Bedrock Knowledge Bases for approved-memory retrieval.
-- Amazon DynamoDB for structured application state and version metadata.
-- Amazon S3 for source artifacts and rendered memory documents.
-- AWS SDK for JavaScript v3.
-- Netlify may host the web app, but AWS AI/ML must remain a core part of the product.
-- Keep model IDs, region, knowledge-base IDs, table names, bucket names, and vendor credentials in environment variables.
+- Deterministic fixture behavior for the demo's assistant operations.
+- Repository-backed lexical retrieval over approved structured memory.
+- Credential-free local mode as the default and complete product path.
+- Optional DynamoDB, S3, and Cognito adapters may support durable hosting without
+  becoming product requirements.
+- Keep optional regions, table names, bucket names, and credentials in environment variables.
 - Do not hardcode a vendor model name into domain logic.
 
-Use repository interfaces so local development can run without AWS:
+Use repository interfaces so the product remains independent of infrastructure:
 
 - `MemoryRepository`
 - `ConversationRepository`
@@ -89,7 +88,8 @@ Use repository interfaces so local development can run without AWS:
 - `ModelGateway`
 - `Telemetry`
 
-Provide both local/in-memory adapters and AWS adapters where practical. The UI and domain services must not import AWS clients directly.
+Keep local/in-memory adapters complete. Optional infrastructure adapters must stay
+behind ports. The UI and domain services must not import provider clients directly.
 
 ## Engineering rules
 
@@ -98,7 +98,7 @@ Provide both local/in-memory adapters and AWS adapters where practical. The UI a
 - Prefer straightforward code over frameworks, metaprogramming, or abstractions that are not yet needed.
 - Do not add a production dependency unless it clearly reduces risk or implementation effort. Record material additions in `docs/DECISION_LOG.md`.
 - Avoid `any`. Use discriminated unions, branded IDs where useful, and explicit return types on exported functions.
-- Keep server-only code outside client bundles. Never expose AWS credentials or private vendor keys to the browser.
+- Keep server-only code outside client bundles. Never expose infrastructure credentials or private vendor keys to the browser.
 - Use structured errors with safe user messages and detailed server logs.
 - All timestamps are ISO 8601 UTC in storage. Render in the user’s locale in the UI.
 - Generate stable IDs with UUIDs or ULIDs; do not use array indexes as persistent identities.
@@ -167,7 +167,8 @@ Minimum tests for the MVP:
 - Employee answer cites the approved pricing decision.
 - Failure to index does not falsely report success; the UI shows a retryable state.
 
-Tests may mock AWS services, but at least one documented smoke-test path must exercise the real Bedrock and Knowledge Base integration.
+The deterministic local salon flow is the required acceptance proof. Optional
+infrastructure adapters need focused contract tests but do not gate the product demo.
 
 ## Definition of done
 

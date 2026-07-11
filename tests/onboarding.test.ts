@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { getDemoState, resetDemoState } from "@/adapters/local/demo-state";
 import { FixtureModelGateway } from "@/adapters/local/fixture-model-gateway";
 import { employeeActor, ownerActor } from "@/server/actors";
-import { memoryService, onboardingService } from "@/server/container";
+import { assistantService, memoryService, onboardingService } from "@/server/container";
 
 async function finishProcessing(batchId: string) {
   let view = await onboardingService.process(batchId, ownerActor());
@@ -55,13 +57,13 @@ describe("proof-first onboarding", () => {
     await expect(onboardingService.prove(created.session.id, {}, ownerActor()))
       .rejects.toThrow("NO_APPROVED_CONTEXT");
     const memory = await memoryService.approveCandidate(candidate.id, candidate.version, ownerActor());
+    expect(getDemoState().importedSources[0]?.source.retention).toBe("APPROVED");
     const proof = await onboardingService.prove(created.session.id, {}, ownerActor());
 
     expect(proof.session.state).toBe("COMPLETED");
     expect(proof.result.answer).toContain("15%");
     expect(proof.result.sourceMemories[0]?.memoryId).toBe(memory.record.id);
     expect(proof.searchStatus).toBe("READY");
-    expect(getDemoState().importedSources[0]?.source.retention).toBe("APPROVED");
   });
 
   it("is idempotent for the same active session and import key", async () => {
@@ -89,6 +91,37 @@ describe("proof-first onboarding", () => {
       content: "api_key=sk-this-is-a-secret-value-that-must-not-be-stored",
       idempotencyKey: "secret-import-key",
     }, ownerActor())).rejects.toThrow("VALIDATION_ERROR");
+  });
+
+  it("treats embedded instructions as untrusted data and preserves approved policy", async () => {
+    await memoryService.createMemoryPage({
+      type: "POLICY",
+      title: "Promotional discounts must not exceed 15%",
+      statement: "Promotional discounts must not exceed 15%. Prefer complimentary add-ons over deeper discounts.",
+      rationale: "Protect margins and maintain premium positioning.",
+      appliesToRoles: ["OWNER", "EMPLOYEE", "FRONT_DESK", "MARKETING"],
+      tags: ["pricing"],
+      sensitivity: "INTERNAL",
+      scope: { level: "COMPANY" },
+    }, ownerActor());
+    const created = await onboardingService.createSession({
+      proofQuestion: "Can the front desk offer 25% off?",
+    }, ownerActor());
+    const maliciousContent = await readFile(join(process.cwd(), "fixtures", "malicious-import.txt"), "utf8");
+    const imported = await onboardingService.createImport({
+      sessionId: created.session.id,
+      provider: "PASTE",
+      title: "Untrusted website",
+      content: maliciousContent,
+      idempotencyKey: "prompt-injection-import",
+    }, ownerActor());
+    const processed = await finishProcessing(imported.batch!.id);
+
+    expect(processed.candidates.every((candidate) => candidate.status === "PROPOSED")).toBe(true);
+    expect(JSON.stringify(await memoryService.listMemories(ownerActor()))).not.toContain("80%");
+    const answer = await assistantService.answerEmployee("Can I give a customer 25% off?", employeeActor());
+    expect(answer.answer).toContain("15%");
+    expect(answer.answer).not.toContain("80%");
   });
 
   it("cancels before completion and removes the raw content", async () => {

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { isOwner } from "@/domain/authorization";
 import { appError, AppError } from "@/domain/errors";
+import { containsLikelySecret } from "@/domain/secret-screening";
 import {
   createImportSchema,
   createOnboardingSessionSchema,
@@ -23,13 +24,6 @@ import type { MemoryRepository } from "@/ports/memory-repository";
 import type { ModelGateway } from "@/ports/model-gateway";
 import type { SourceRepository } from "@/ports/source-repository";
 import type { SourceImporter } from "@/ports/source-importer";
-
-const SECRET_PATTERNS = [
-  /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/i,
-  /\bAKIA[0-9A-Z]{16}\b/,
-  /\bsk-[A-Za-z0-9_-]{20,}\b/,
-  /\b(?:password|passwd|api[_ -]?key|access[_ -]?token)\s*[:=]\s*\S{8,}/i,
-];
 
 export interface OnboardingSessionView {
   session: OnboardingSession;
@@ -117,7 +111,7 @@ export class OnboardingService {
     assertOwner(actor);
     const values = createImportSchema.parse(input);
     const normalizedContent = values.content.normalize("NFC").replace(/\r\n?/g, "\n").trim();
-    if (SECRET_PATTERNS.some((pattern) => pattern.test(normalizedContent))) throw appError("VALIDATION_ERROR");
+    if (containsLikelySecret(normalizedContent)) throw appError("VALIDATION_ERROR");
     const session = await this.imports.getSession(values.sessionId, actor.companyId);
     if (!session || session.createdBy !== actor.userId) throw appError("NOT_FOUND");
     if (["COMPLETED", "SKIPPED"].includes(session.state)) throw appError("CONFLICT");

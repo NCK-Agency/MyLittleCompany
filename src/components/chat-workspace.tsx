@@ -3,7 +3,7 @@
 import type { AppendMessage } from "@assistant-ui/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AssistantRole,
   Company,
@@ -64,6 +64,7 @@ export function ChatWorkspace() {
     .map((grant) => grant.scope) ?? [];
   const searchParams = useSearchParams();
   const requested = searchParams.get("assistant") as AssistantRole | null;
+  const requestedConversationId = searchParams.get("conversation");
   const initialRole = requested && assistants.some((item) => item.role === requested) ? requested : "MARKETING";
   const [company, setCompany] = useState<Company | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -84,6 +85,7 @@ export function ChatWorkspace() {
   const [approvedMemories, setApprovedMemories] = useState<HydratedMemory[]>([]);
   const [knowledgePanelOpen, setKnowledgePanelOpen] = useState(false);
   const [workspaceReady, setWorkspaceReady] = useState(false);
+  const openedRequestedConversationId = useRef<string | null>(null);
 
   const loadConversations = useCallback(async (): Promise<void> => {
     const items = await apiRequest<Conversation[]>("/api/conversations");
@@ -139,7 +141,7 @@ export function ChatWorkspace() {
     setKnowledgePanelOpen(false);
   }
 
-  async function openConversation(conversation: Conversation): Promise<void> {
+  const openConversation = useCallback(async (conversation: Conversation): Promise<void> => {
     setBusy(true);
     setError("");
     setStatus("Opening conversation…");
@@ -167,7 +169,21 @@ export function ChatWorkspace() {
     } finally {
       setBusy(false);
     }
-  }
+  }, [canReview]);
+
+  useEffect(() => {
+    if (!workspaceReady || !requestedConversationId || openedRequestedConversationId.current === requestedConversationId) return;
+    openedRequestedConversationId.current = requestedConversationId;
+    const task = window.setTimeout(() => {
+      const requestedConversation = conversations.find((conversation) => conversation.id === requestedConversationId);
+      if (requestedConversation) {
+        void openConversation(requestedConversation);
+      } else {
+        setError("That conversation is not available to this account.");
+      }
+    }, 0);
+    return () => window.clearTimeout(task);
+  }, [conversations, openConversation, requestedConversationId, workspaceReady]);
 
   async function ensureConversation(content: string): Promise<Conversation> {
     if (activeConversation) return activeConversation;

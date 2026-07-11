@@ -313,6 +313,8 @@ provisioned account.
 ### MLC-110 Cognito login and scoped knowledge access — DONE
 
 - Cognito managed login and Auth.js secure sessions establish identity.
+- `/login` is the Cognito company-account handoff; `/login-demo` is the separate
+  seeded local account picker.
 - Current memberships grant independent company/department read, suggest, and
   approval access; owner remains unrestricted.
 - People & access supports owner invitations, grant changes, pause/restore, and
@@ -339,6 +341,14 @@ provisioned account.
 - Completion requires a cited answer from knowledge approved from that import, while indexing status remains separately visible.
 - Raw imported content follows 24-hour, seven-day, 30-day, approved-retention, and owner-tombstone rules.
 - Local and AWS repositories, browser coverage, parser/security coverage, and the existing approval/index path are shared rather than duplicated.
+
+### MLC-113 Waitlist-only public access — DONE
+
+- Anonymous navigation and login offer `Join waitlist`, never public registration.
+- Validated requests persist idempotently in local storage or DynamoDB without
+  creating identities, memberships, grants, or company data.
+- Duplicate and bot-trap submissions do not reveal stored-email state.
+- Cognito self-registration is disabled; People & access remains the only account-creation path.
 
 ## P2 — Stretch or post-hackathon
 

@@ -57,7 +57,6 @@ h2,
 }
 
 a {
-  color: inherit;
   text-decoration-thickness: 0.08em;
   text-underline-offset: 0.2em;
 }
@@ -215,6 +214,69 @@ textarea:focus-visible {
   color: var(--graphite);
   font-size: 0.75rem;
   font-weight: 700;
+}
+
+.demo-mode-label {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 60;
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  border: 1px solid var(--cobalt-deep);
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  background: var(--butter);
+  color: var(--cobalt-deep);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--cobalt-deep) 18%, transparent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.public-access-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: 0.25rem;
+}
+
+.public-sign-in,
+.public-waitlist-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 0.65rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.public-sign-in {
+  color: var(--graphite);
+}
+
+.public-sign-in:hover {
+  background: var(--cobalt-soft);
+  color: var(--cobalt-deep);
+}
+
+.public-waitlist-link {
+  border: 1px solid var(--coral-deep);
+  background: var(--coral);
+  color: white;
+  box-shadow: 0 3px 0 var(--coral-deep);
+}
+
+.public-waitlist-link:hover {
+  background: var(--coral-deep);
+  transform: translateY(-1px);
 }
 
 .status-dot {
@@ -523,7 +585,6 @@ textarea:focus-visible {
 .landing-hero,
 .landing-problem,
 .landing-process,
-.landing-trust,
 .landing-proof,
 .landing-closing {
   width: min(100%, 90rem);
@@ -561,7 +622,7 @@ textarea:focus-visible {
   font-family: var(--font-barlow-condensed), sans-serif;
   font-size: clamp(4.75rem, 8.2vw, 8.25rem);
   font-weight: 900;
-  letter-spacing: -0.045em;
+  letter-spacing: 0.005em;
   line-height: 0.78;
   text-transform: uppercase;
 }
@@ -581,6 +642,13 @@ textarea:focus-visible {
   align-items: center;
   gap: 1.25rem;
   margin-top: 2rem;
+}
+
+.landing-beta-note {
+  margin: 1.25rem 0 0;
+  color: rgb(255 255 255 / 68%);
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .landing-primary-cta {
@@ -781,8 +849,7 @@ textarea:focus-visible {
   font-weight: 900;
 }
 
-.landing-problem,
-.landing-trust {
+.landing-problem {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   gap: clamp(3rem, 8vw, 8rem);
@@ -791,14 +858,14 @@ textarea:focus-visible {
 
 .landing-section-heading h2,
 .landing-process h2,
-.landing-trust h2,
+.landing-process-trust h3,
 .landing-proof h2,
 .landing-closing h2 {
   margin: 1rem 0 0;
   font-family: var(--font-barlow-condensed), sans-serif;
   font-size: clamp(3.5rem, 6vw, 6.2rem);
   font-weight: 900;
-  letter-spacing: -0.04em;
+  letter-spacing: 0.005em;
   line-height: 0.84;
   text-transform: uppercase;
 }
@@ -930,19 +997,32 @@ textarea:focus-visible {
   transform: translateY(-0.2rem) rotate(-45deg);
 }
 
-.landing-trust {
-  margin-top: 2rem;
+.landing-process-trust {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(3rem, 8vw, 8rem);
+  padding: clamp(3rem, 6vw, 6rem);
+  border-top: 1px solid rgb(255 255 255 / 25%);
   background: var(--butter);
+  color: var(--graphite);
 }
 
-.landing-trust > div > p:last-child {
+.landing-process-trust .landing-eyebrow {
+  color: var(--cobalt-deep);
+}
+
+.landing-process-trust h3 {
+  margin: 1rem 0 0;
+}
+
+.landing-process-trust > div > p:last-child {
   max-width: 42rem;
   margin-top: 2rem;
   font-size: 1.1rem;
   line-height: 1.75;
 }
 
-.landing-trust ul {
+.landing-process-trust ul {
   align-self: end;
   margin: 0;
   padding: 0;
@@ -950,7 +1030,7 @@ textarea:focus-visible {
   list-style: none;
 }
 
-.landing-trust li {
+.landing-process-trust li {
   display: grid;
   grid-template-columns: 3rem 1fr;
   gap: 1rem;
@@ -959,7 +1039,7 @@ textarea:focus-visible {
   font-weight: 750;
 }
 
-.landing-trust li span {
+.landing-process-trust li span {
   color: var(--cobalt);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
@@ -1173,7 +1253,7 @@ textarea:focus-visible {
   }
 
   .landing-problem,
-  .landing-trust {
+  .landing-process-trust {
     grid-template-columns: 1fr;
   }
 
@@ -1313,20 +1393,19 @@ textarea:focus-visible {
   }
 
   .landing-problem,
-  .landing-trust,
   .landing-proof {
     gap: 2.5rem;
     padding: 4rem 0;
   }
 
-  .landing-trust {
+  .landing-process-trust {
     padding-right: 1.5rem;
     padding-left: 1.5rem;
   }
 
   .landing-section-heading h2,
   .landing-process h2,
-  .landing-trust h2,
+  .landing-process-trust h3,
   .landing-proof h2,
   .landing-closing h2 {
     font-size: clamp(3.2rem, 17vw, 4.5rem);
@@ -2441,6 +2520,16 @@ textarea:focus-visible {
 }
 
 @media (max-width: 640px) {
+  .public-access-actions {
+    gap: 0.15rem;
+  }
+
+  .public-sign-in,
+  .public-waitlist-link {
+    padding-inline: 0.55rem;
+    font-size: 0.72rem;
+  }
+
   .conversation-header {
     align-items: center;
     gap: 0.6rem;
@@ -2568,6 +2657,167 @@ textarea:focus-visible {
 
   .knowledge-page-date {
     display: none;
+  }
+}
+
+.waitlist-page {
+  min-height: calc(100vh - 5rem);
+  padding: clamp(1.5rem, 5vw, 5rem) 1rem;
+  background:
+    linear-gradient(135deg, rgb(23 70 209 / 7%) 0 25%, transparent 25% 100%),
+    var(--ivory);
+}
+
+.waitlist-panel {
+  display: grid;
+  width: min(70rem, 100%);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 2px solid var(--cobalt-deep);
+  background: white;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+}
+
+.waitlist-story {
+  background: var(--cobalt);
+  padding: clamp(2rem, 5vw, 4rem);
+  color: white;
+}
+
+.waitlist-story h1 {
+  margin-top: 1rem;
+  font-family: var(--font-barlow-condensed), sans-serif;
+  font-size: clamp(4rem, 8vw, 6.4rem);
+  font-weight: 900;
+  letter-spacing: 0.005em;
+  line-height: 0.82;
+  text-transform: uppercase;
+}
+
+.waitlist-story > p:last-of-type {
+  margin-top: 1.5rem;
+  color: rgb(255 255 255 / 78%);
+  font-size: 1.1rem;
+  line-height: 1.65;
+}
+
+.waitlist-story ul {
+  display: grid;
+  gap: 0.9rem;
+  margin: 2.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.waitlist-story li {
+  border-top: 1px solid rgb(255 255 255 / 28%);
+  padding-top: 0.9rem;
+  color: white;
+  font-weight: 750;
+}
+
+.waitlist-form-panel {
+  padding: clamp(2rem, 5vw, 4rem);
+}
+
+.waitlist-form-panel h2 {
+  margin-top: 0.7rem;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.waitlist-form-lede {
+  margin-top: 1rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.waitlist-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.waitlist-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.waitlist-form .field-label > span {
+  margin-left: 0.35rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.waitlist-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.waitlist-submit {
+  width: 100%;
+  min-height: 3.5rem;
+  margin-top: 0.5rem;
+  font-size: 1rem;
+}
+
+.waitlist-privacy,
+.waitlist-sign-in {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.waitlist-status {
+  min-height: 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
+.waitlist-status-success {
+  color: var(--success);
+}
+
+.waitlist-status-error {
+  color: var(--danger);
+}
+
+.waitlist-sign-in {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.waitlist-sign-in a {
+  color: var(--cobalt);
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .waitlist-page {
+    padding: 1rem;
+  }
+
+  .waitlist-panel,
+  .waitlist-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .waitlist-story,
+  .waitlist-form-panel {
+    padding: 2rem 1.5rem;
+  }
+
+  .waitlist-story h1 {
+    font-size: clamp(4rem, 20vw, 5.5rem);
   }
 }
 

@@ -5,7 +5,7 @@ import {
   UserNotFoundException,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
 const required = [
   "COGNITO_REGION",
@@ -30,6 +30,15 @@ const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({ region, maxAttem
 
 function attribute(attributes, name) {
   return attributes?.find((item) => item.Name === name)?.Value;
+}
+
+const company = await dynamo.send(new GetCommand({
+  TableName: tableName,
+  Key: { PK: `COMPANY#${companyId}`, SK: "PROFILE" },
+  ConsistentRead: true,
+}));
+if (company.Item?.entity !== "COMPANY" || company.Item?.id !== companyId) {
+  throw new Error("Demo company profile is missing. Run pnpm bootstrap:aws-demo before pnpm bootstrap:cognito.");
 }
 
 let cognitoUser;

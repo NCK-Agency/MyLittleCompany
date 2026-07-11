@@ -41,7 +41,7 @@ export class MemoryService {
     return (await this.memories.listCurrent(actor.companyId)).filter((memory) =>
       isOwner(actor)
         ? memory.record.status === "APPROVED"
-        : isMemoryEligible(memory, actor, memory.record.appliesToRoles),
+        : isMemoryEligible(memory, actor),
     );
   }
 
@@ -50,11 +50,18 @@ export class MemoryService {
     if (!memory) return null;
     const visible = isOwner(actor)
       ? memory.record.status === "APPROVED"
-      : isMemoryEligible(memory, actor, memory.record.appliesToRoles);
+      : isMemoryEligible(memory, actor);
     if (!visible) return null;
+    const history = await this.memories.listVersions(id, actor.companyId);
     return {
       ...memory,
-      history: await this.memories.listVersions(id, actor.companyId),
+      history: isOwner(actor)
+        ? history
+        : history.filter((version) =>
+            version.companyId === actor.companyId
+            && canAccess(actor, "READ", version.scope)
+            && version.sensitivity !== "CONFIDENTIAL"
+            && version.appliesToRoles.some((role) => actor.roles.includes(role))),
     };
   }
 
@@ -195,6 +202,7 @@ export class MemoryService {
       idempotencyKey: `${actor.companyId}:${id}:v${expectedVersion}`,
     });
     const memory = approval.memory;
+    await this.retainImportedSources(memory, actor.companyId);
     if (!approval.created) return memory;
     return this.indexMemory(memory, actor);
   }
@@ -239,6 +247,7 @@ export class MemoryService {
         memoryId: `mem-${crypto.randomUUID()}`,
         idempotencyKey: `${actor.companyId}:${candidate.id}:v${candidate.version}:exception`,
       });
+      await this.retainImportedSources(approval.memory, actor.companyId);
       return approval.created ? this.indexMemory(approval.memory, actor) : approval.memory;
     }
 
@@ -253,6 +262,7 @@ export class MemoryService {
       approvedAt: now,
       idempotencyKey: `${actor.companyId}:${candidate.id}:v${candidate.version}:${values.resolution}:memory-v${current.record.currentVersion}`,
     });
+    await this.retainImportedSources(approval.memory, actor.companyId);
     return approval.created ? this.indexMemory(approval.memory, actor) : approval.memory;
   }
 
@@ -268,6 +278,18 @@ export class MemoryService {
 
   async createSuggestion(input: unknown, actor: ActorContext): Promise<MemoryCandidate> {
     return this.suggestions.createManual(input, actor);
+  }
+
+  private async retainImportedSources(memory: HydratedMemory, companyId: string): Promise<void> {
+    const sourceIds = new Set(memory.version.sourceRefs
+      .map((source) => source.sourceId)
+      .filter((sourceId) => sourceId.startsWith("source-import-")));
+    for (const sourceId of sourceIds) {
+      const imported = await this.sources.getImportedSource(sourceId, companyId);
+      if (imported && imported.source.retention !== "APPROVED") {
+        await this.sources.retainImportedSource(sourceId, companyId);
+      }
+    }
   }
 
   private async indexMemory(memory: HydratedMemory, actor: ActorContext): Promise<HydratedMemory> {

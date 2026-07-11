@@ -1,164 +1,179 @@
-# Demo Script
+# Tomorrow-ready demo script
 
 ## Demo objective
 
-Show that My Little Company turns one normal owner statement into approved organizational memory that changes future work for both AI assistants and a human employee.
+In five to seven minutes, show one complete governed-memory loop:
 
-Do not spend the demo explaining infrastructure before the product value is visible.
+> Conversation -> suggested company knowledge -> human approval -> versioned
+> Playbook -> trusted reuse in ChatGPT
 
-## Pre-demo state
+The proof is not merely that AI can answer a question. The proof is that ChatGPT
+can read approved knowledge and suggest an addition while only My Little Company
+can approve company truth.
 
-- Demo company reset to Maison Lumière Salon.
-- Owner is signed in or represented by the demo owner session.
-- General company profile and brand context exist.
-- The 15% promotional-discount rule does not exist yet.
-- AWS mode is configured for the submitted demo, with local mode available as fallback.
-- Review inbox is empty.
+## Pre-recording gates
 
-## Opening
+- Production is running with `APP_MODE=aws` and `AUTH_MODE=cognito`.
+- The owner can sign in through Cognito and complete a production reset.
+- The reset survives a reload and Review is empty.
+- The onboarding source below is visibly labelled **Synthetic demo data**.
+- The discount rule does not exist before the recording.
+- Bedrock generation, DynamoDB persistence, S3 source storage, and Knowledge Base
+  retrieval have passed `pnpm smoke:aws`.
+- The private ChatGPT app is connected through OAuth and exposes exactly
+  `search`, `fetch`, and `suggest_company_knowledge`.
+- The ChatGPT app asks before the suggestion tool makes a change.
+- No provider consoles, terminals, or developer tools are needed in the filmed
+  path.
+
+Keep the existing local recording ready as the guaranteed backup.
+
+## Synthetic onboarding source
+
+Paste this short source during onboarding:
+
+> **Synthetic demo data — Maison Lumière Salon.** We are a premium neighborhood
+> salon for busy local professionals and clients preparing for important events.
+> Customers choose us for calm personal consultations and consistent service.
+> Our communication should feel warm, confident, refined, helpful, and never
+> pushy.
+
+Do not upload real customer data or imply that the synthetic source came from a
+real business.
+
+## Filmed journey
+
+### 1. Reset, sign in, and onboard — 60 to 90 seconds
+
+Reset the demo company, sign in as the owner, and complete onboarding with the
+synthetic source.
+
+Approve the useful brand/customer suggestions. Ask one short proof question and
+open its source citation.
 
 Say:
 
-> “In a small business, the owner is often the operating system. Important decisions live in their head or disappear inside chat history. My Little Company turns everyday conversation into approved company memory that both AI assistants and employees can reuse.”
+> “This is synthetic demo data. My Little Company has turned a short business
+> description into useful suggestions, but the owner still decides what becomes
+> trusted company knowledge.”
 
-## Step 1 — Ask for a marketing idea
+### 2. Teach the company through Chat — 45 seconds
 
-Open **Chat → Marketing**.
+Open **Chat** and enter:
+
+> “We never discount more than 15%. We prefer offering a free add-on because we
+> want to maintain a premium image.”
+
+Show the suggested-company-knowledge card: what was heard, why it matters,
+source, scope, affected roles, and the `Approve / Edit / Ignore` actions.
+
+Say:
+
+> “This is the key difference from ordinary chat history. The system recognized
+> a lasting rule, but it did not silently make that rule company truth.”
+
+Approve the suggestion without leaving the workflow.
+
+### 3. Inspect version 1 in Playbook — 45 seconds
+
+Open the structured Playbook entry and point out:
+
+- the statement and rationale;
+- conversation source;
+- company scope and affected roles;
+- owner approver and approval date;
+- search readiness;
+- version 1.
+
+Say:
+
+> “The company remembers both the decision and why it was made.”
+
+### 4. Create version 2 — 45 seconds
+
+Edit the approved entry so the maximum discount is **10%**, preserve the
+free-add-on preference and rationale, then save it as version 2. Expand history
+and show that version 1 remains preserved.
+
+Say:
+
+> “Changing a rule creates a new approved version. It does not rewrite history.”
+
+Wait until the current entry shows version 2 and search status is ready before
+switching to ChatGPT.
+
+### 5. Reuse current truth in ChatGPT — 60 seconds
+
+In a new ChatGPT conversation with the private **My Little Company** app enabled,
+enter:
+
+> “Use My Little Company to find our approved promotion discount rule. Do not
+> use web browsing.”
+
+Then enter:
+
+> “Open the most relevant result and explain the current rule with its rationale
+> and source.”
+
+The result must be version 2, state the 10% maximum, preserve the free-add-on
+preference, and link to the canonical Playbook URL.
+
+Say:
+
+> “ChatGPT is reading the current approved version, not a copied prompt or an old
+> chat message.”
+
+### 6. Suggest knowledge from ChatGPT — 60 seconds
 
 Enter:
 
-> “Tuesdays are quiet. Create a promotion to bring more customers in.”
+> “Our new lasting rule is that appointment reminders must be sent 24 hours in
+> advance. Offer to suggest this to My Little Company, but do not make the change
+> until I confirm.”
 
-Point out that the assistant already uses approved company context such as premium positioning and customer profile.
+Confirm only when ChatGPT asks. Show the successful suggestion result and Review
+link.
 
-Do not over-explain the first answer.
+If useful, ask:
 
-## Step 2 — Teach the company naturally
+> “Is that rule approved company policy now?”
 
-Enter:
+ChatGPT must answer no: the item is only proposed.
 
-> “We never discount more than 15%. We prefer offering a free add-on because we want to maintain a premium image.”
+### 7. Prove the approval boundary — 30 seconds
 
-My Little Company shows a suggested company knowledge card.
+Return to **Review** in My Little Company. Show the 24-hour reminder item still
+waiting for a human decision. Do not approve it during the close.
 
-Say:
+Close with:
 
-> “This is the key difference from normal chat history. My Little Company recognized something useful beyond this conversation, but it did not silently turn it into company truth.”
+> “ChatGPT can use and suggest company knowledge, but only the company can
+> approve it.”
 
-Briefly show:
+## Truthful fallback ladder
 
-- Maximum 15% discount.
-- Prefer free add-ons.
-- Rationale.
-- Applies-to roles.
-- Source conversation.
+Timebox each external repair attempt and step down without pretending a fallback
+is the hosted path.
 
-Click **Approve**.
-
-## Step 3 — Show the approved Playbook entry
-
-Open the entry or its success state.
-
-Point out:
-
-- Approved by the owner.
-- Version 1.
-- Source.
-- Rationale.
-- Roles.
-- Search/index readiness.
-
-Say:
-
-> “The company now remembers both what was decided and why.”
-
-## Step 4 — Reuse it in Marketing
-
-Ask the Marketing Assistant to revise the promotion.
-
-Expected result:
-
-- No offer above 15%.
-- Complimentary add-on preferred.
-- Premium tone.
-- Source chip for the approved pricing decision.
-
-Say:
-
-> “The approved memory now changes future AI work without the owner rewriting a prompt.”
-
-## Step 5 — Turn it into an SOP
-
-Open **Chat → Operations** or click **Create SOP**.
-
-Generate the Tuesday Promotion SOP.
-
-Show:
-
-- Purpose.
-- Front-desk steps.
-- Eligibility and offer setup.
-- Quality checks.
-- Tracking and review.
-- Source decision.
-
-Say:
-
-> “The same memory moves from an idea into repeatable operations.”
-
-Mention that the SOP remains a suggestion until approved.
-
-## Step 6 — Show employee reuse
-
-Open **Chat → Employee**.
-
-Ask:
-
-> “Can I give a customer 25% off?”
-
-Expected answer:
-
-> “No. The current approved promotion policy caps discounts at 15%. The salon prefers complimentary add-ons because they protect margins and premium positioning.”
-
-Show the source and approval date.
-
-Say:
-
-> “A future employee gets the same answer and the reason behind it, even if the owner is not present.”
-
-## Closing
-
-Say:
-
-> “Chat is the input. Approved company memory is the product. My Little Company helps a business explain something once, preserve the decision, and apply it consistently across its human-and-AI team.”
-
-## Optional technical close
-
-Only after the product story:
-
-> “Amazon Bedrock extracts and generates the AI outputs. DynamoDB stores the structured approval and version state. S3 stores sources and canonical memory documents. Bedrock Knowledge Bases retrieves approved, company-scoped context for every assistant.”
-
-## Backup plan
-
-If external AI generation fails:
-
-- Switch to local demo mode only if the submission and presentation allow it.
-- State that local mode uses deterministic fixtures while the same domain workflow normally uses AWS adapters.
-- Do not pretend a local response came from AWS.
-
-If indexing fails:
-
-- Use the visible retry state as evidence of trustworthy failure handling.
-- Retry once.
-- If needed, use a pre-indexed approved fixture and explain the limitation honestly.
+1. If Cognito alone is blocked, keep AWS and Netlify real, switch to seeded demo
+   authentication, and state that authentication is in demo mode.
+2. If Netlify is blocked, run the AWS-backed application through a temporary
+   HTTPS tunnel with seeded demo authentication.
+3. If Bedrock or Knowledge Base smoke testing still fails after two focused
+   repair attempts, run the entire recording in deterministic local mode through
+   the tunnel and keep the visible **Demo mode** label.
+4. Capture the real ChatGPT scene separately as soon as it passes and splice it
+   into the recording. Never fabricate a ChatGPT response or OAuth connection.
+5. If the ChatGPT connection never succeeds, omit that claim and use the existing
+   local platform recording as the backup.
 
 ## Presenter checklist
 
-- [ ] Reset demo.
-- [ ] Confirm the 15% memory is absent.
-- [ ] Confirm Review is empty.
-- [ ] Confirm AWS environment health.
-- [ ] Confirm employee persona can read but not approve.
-- [ ] Keep the browser zoom and window size readable.
-- [ ] Avoid opening provider consoles unless asked.
-- [ ] End on the employee answer or the product promise, not a terminal.
+- [ ] Complete the journey once from reset without consoles or developer tools.
+- [ ] Confirm the onboarding source says **Synthetic demo data** on screen.
+- [ ] Confirm version 2 is `READY` before the ChatGPT search.
+- [ ] Confirm ChatGPT returns the 10% rule, not version 1.
+- [ ] Confirm the ChatGPT suggestion remains `PROPOSED` in Review.
+- [ ] Keep browser zoom, notifications, bookmarks, and account information safe
+  for recording.
+- [ ] End on the approval boundary, not infrastructure.
