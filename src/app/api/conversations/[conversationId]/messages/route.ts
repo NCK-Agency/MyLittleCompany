@@ -1,5 +1,5 @@
 import { apiError, ok } from "@/server/api-response";
-import { ownerActor } from "@/server/actors";
+import { requireActor } from "@/server/auth-context";
 import { conversationService } from "@/server/container";
 
 interface Context {
@@ -9,7 +9,7 @@ interface Context {
 export async function GET(_request: Request, context: Context): Promise<Response> {
   try {
     const { conversationId } = await context.params;
-    return ok(await conversationService.listMessages(conversationId, ownerActor()));
+    return ok(await conversationService.listMessages(conversationId, await requireActor()));
   } catch (error) {
     return apiError(error);
   }
@@ -18,7 +18,7 @@ export async function GET(_request: Request, context: Context): Promise<Response
 export async function POST(request: Request, context: Context): Promise<Response> {
   try {
     const { conversationId } = await context.params;
-    return ok(await conversationService.send(conversationId, await request.json(), ownerActor()));
+    return ok(await conversationService.send(conversationId, await request.json(), await requireActor()));
   } catch (error) {
     return apiError(error);
   }

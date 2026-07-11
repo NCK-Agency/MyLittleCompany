@@ -2,13 +2,13 @@
 
 ## Mission
 
-Build **My Little Company (MLC)**: a simple organizational-memory product for non-technical small-business owners.
+Build **My Little Company**: a simple organizational-memory product for non-technical small-business owners.
 
 The product promise is:
 
 > **Explain it once. Your company remembers.**
 
-MLC turns normal owner conversations into proposed company knowledge—facts, customer insights, brand rules, policies, decisions, lessons, and SOPs. The owner reviews those proposals. Only approved knowledge becomes trusted context for AI assistants and employees.
+My Little Company turns normal owner conversations into proposed company knowledge—facts, customer insights, brand rules, policies, decisions, lessons, and SOPs. The owner reviews those proposals. Only approved knowledge becomes trusted context for AI assistants and employees.
 
 The core product is not “many agents.” The core product is the governed memory loop beneath them:
 
@@ -126,10 +126,11 @@ These rules are non-negotiable:
 
 The primary user is a busy, non-technical small-business owner.
 
+- In all audience-facing copy, write **My Little Company** in full. Do not use **MLC**. Internal code identifiers may retain the abbreviation.
 - Use plain business language. In the UI, say “Suggested company knowledge,” not “memory candidate.”
 - The owner should never need to understand embeddings, RAG, model IDs, vector stores, or prompt engineering.
 - Keep primary navigation small: **Home, Chat, Review, Playbook**.
-- A suggested-knowledge card must show: what MLC heard, why it matters, where it came from, who it affects, and `Approve / Edit / Ignore` actions.
+- A suggested-knowledge card must show: what My Little Company heard, why it matters, where it came from, who it affects, and `Approve / Edit / Ignore` actions.
 - Approval should be possible without leaving the current workflow.
 - Important agent answers should show source chips and approval dates.
 - Conflicts require a clear choice: replace, keep both as an exception, edit, or ignore.

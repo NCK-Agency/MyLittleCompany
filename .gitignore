@@ -26,3 +26,4 @@ test-results/
 # Local demo persistence
 .data/
 .tmp/
+.gstack/

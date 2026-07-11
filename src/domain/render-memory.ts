@@ -9,6 +9,7 @@ export function renderMemoryDocument({ record, version }: HydratedMemory): strin
     `- Version: ${version.version}`,
     `- Type: ${record.type}`,
     `- Status: ${record.status}`,
+    `- Scope: ${record.scope.level}${record.scope.organizationalUnitId ? ` (${record.scope.organizationalUnitId})` : ""}`,
     `- Applies to: ${record.appliesToRoles.join(", ")}`,
     "",
     "## Company rule",

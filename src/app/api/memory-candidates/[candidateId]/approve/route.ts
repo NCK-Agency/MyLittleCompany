@@ -1,5 +1,5 @@
 import { apiError, ok } from "@/server/api-response";
-import { ownerActor } from "@/server/actors";
+import { requireActor } from "@/server/auth-context";
 import { memoryService } from "@/server/container";
 import { z } from "zod";
 
@@ -10,7 +10,7 @@ export async function POST(request: Request, context: Context): Promise<Response
   try {
     const { candidateId } = await context.params;
     const input = approvalSchema.parse(await request.json());
-    return ok(await memoryService.approveCandidate(candidateId, input.expectedCandidateVersion, ownerActor()));
+    return ok(await memoryService.approveCandidate(candidateId, input.expectedCandidateVersion, await requireActor()));
   } catch (error) {
     return apiError(error);
   }

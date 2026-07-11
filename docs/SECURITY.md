@@ -62,10 +62,15 @@ A retrieval or repository bug returns another company’s memory.
 
 Controls:
 
-- Company-scoped partition keys.
+- Every business-data partition key starts with the trusted company namespace,
+  including message and immutable-version child collections.
 - Company metadata filter in the knowledge index.
+- Knowledge-index hits with missing or malformed company, approval, role,
+  sensitivity, memory, or version metadata fail closed.
 - Server-side hydration verifies `companyId` after retrieval.
 - Tests deliberately inject a cross-company index hit and require rejection.
+- Collision tests deliberately reuse the same conversation, message, memory, and
+  version IDs in two companies and require distinct physical keys.
 - Do not trust a client-supplied company ID.
 
 ### T4 Stale or superseded policy used as current truth
@@ -150,12 +155,12 @@ Do not assume content safety controls automatically sanitize the reference chunk
 |---|---:|---:|---:|---:|
 | Create conversation | Yes | Yes | Yes | No |
 | Create suggestion through conversation | Indirect | Indirect | Indirect | Suggest only |
-| Edit suggestion | Yes | Future scoped | No | No |
-| Approve memory | Yes | Future scoped | No | Never |
-| Reject memory | Yes | Future scoped | No | Never |
+| Edit suggestion | Yes | With scoped `APPROVE` | No | No |
+| Approve memory | Yes | With scoped `APPROVE` | No | Never |
+| Reject memory | Yes | With scoped `APPROVE` | No | Never |
 | View internal approved memory | Yes | Yes | Role-scoped | Role-scoped |
 | View confidential memory | Yes | Authorized only | No by default | Only if explicitly authorized |
-| Supersede/archive memory | Yes | Future scoped | No | No |
+| Supersede/archive memory | Yes | No | No | No |
 | Reset demo | Demo owner | No | No | No |
 
 ## 6. Required server-side checks
@@ -166,7 +171,10 @@ Every request must establish:
 interface ActorContext {
   userId: string;
   companyId: string;
+  email: string;
+  displayName: string;
   roles: CompanyRole[];
+  grants: AccessGrant[];
   demoMode: boolean;
 }
 ```
@@ -183,11 +191,18 @@ Before a memory read:
 
 Before approval:
 
-1. Confirm owner or authorized manager role.
+1. Confirm owner or an `APPROVE` grant for the candidate's exact scope.
 2. Confirm candidate company.
 3. Confirm candidate still proposed and version matches.
 4. Confirm resolution is explicit for conflicts.
 5. Write audit events.
+
+Authentication cookies contain identity, not authorization. The server reloads
+membership status and grants on every request. Company grants cover all
+departments; department `READ` inherits relevant company knowledge, while
+department `SUGGEST` and `APPROVE` remain exact. `APPROVE` includes `READ`.
+Confidential knowledge, company settings, access administration, demo reset, and
+direct Playbook mutation remain owner-only.
 
 ## 7. Data protection
 
@@ -203,6 +218,8 @@ Before approval:
 
 - Encryption at rest is expected.
 - Restrict IAM actions to the application table.
+- Prefix every business partition with `COMPANY#{companyId}` so IAM
+  `dynamodb:LeadingKeys` can be added if tenant-scoped AWS sessions are introduced.
 - Use condition expressions for state transitions.
 - Avoid scans containing multiple companies in runtime paths.
 
@@ -234,7 +251,29 @@ Do not log by default:
 - Hidden prompts containing sensitive content.
 - Entire conversations in production telemetry.
 
-## 9. Security test scenario for the demo
+## 9. MCP and OAuth controls
+
+- Accept only Authorization Code with PKCE S256 and exact registered redirects.
+- Bind authorization codes and tokens to the canonical `/mcp` resource audience.
+- Permit exact HTTPS callbacks for hosted MCP clients and exact HTTP loopback
+  callbacks for native clients; reject insecure remote HTTP, credentials, and
+  fragments.
+- Store one-time codes and refresh tokens as hashes; access tokens expire after
+  15 minutes and refresh tokens rotate with a 30-day maximum lifetime.
+- Put no company, role, department, or grant data in MCP tokens.
+- Reload the active membership for every MCP request; OAuth consent never fills
+  in a missing application grant.
+- Reject likely credentials before model extraction or evidence persistence.
+- Store only the required external evidence excerpt, never a complete external
+  conversation.
+- Never log bearer/refresh tokens or full submitted evidence.
+- Publish no `knowledge:approve` scope and no approval tool.
+
+MCP suggestions are limited to ten attempts per actor per minute. Client
+registration is rate-limited independently. `MCP_ENABLED=false` removes the
+public connector surface without deleting ordinary candidates already created.
+
+## 10. Security test scenario for the demo
 
 ### Setup
 
@@ -256,7 +295,7 @@ Malicious imported text:
 - The malicious text is never treated as system instruction.
 - Cross-role or confidential data is not revealed.
 
-## 10. Pre-demo checklist
+## 11. Pre-demo checklist
 
 - [ ] No secrets in Git history or browser bundle.
 - [ ] Demo credentials are limited and disposable.
@@ -268,3 +307,14 @@ Malicious imported text:
 - [ ] Approval is server-authorized.
 - [ ] Indexing failure is visible and retryable.
 - [ ] Logs do not contain raw credentials or unnecessary personal data.
+
+## 12. Imported-source controls
+
+- Slice 1 accepts server-validated text only. The browser file picker accepts an extracted JSON file, never an archive, executable, or encrypted export.
+- ChatGPT JSON is parsed in a Web Worker. The parser follows only the active branch, rejects cycles and missing nodes, ignores system/tool messages, and uploads only the selected conversation.
+- Quick setup rejects secret patterns before raw-source persistence and limits selected content to 40,000 characters.
+- Imported text is always untrusted data. Prompts instruct the model to ignore commands embedded in it; extraction produces proposals only, and approval remains a server-authorized human action.
+- Raw content uses encrypted, private, company-prefixed S3 objects and is never written to application logs or telemetry.
+- Unapproved content carries a 30-day deletion time; no-candidate imports carry 24 hours; all-ignored imports carry seven days. Approved-source content is retained until owner deletion.
+- Owner deletion tombstones raw content while preserving the source label, checksum, and citation metadata required for an auditable approved memory.
+- Every session, batch, item, source, candidate, lease, proof, and deletion operation is company-scoped on the server. The onboarding UI is not an authorization boundary.

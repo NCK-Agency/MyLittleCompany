@@ -1,4 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { BrandMark } from "./brand-mark";
+import type { ActorContext } from "@/domain/types";
+import { isOwner } from "@/domain/authorization";
+import { ViewerProvider } from "./viewer-context";
+import { SignOutButton } from "./sign-out-button";
 
 const navigation = [
   { href: "/", label: "Home" },
@@ -7,26 +15,62 @@ const navigation = [
   { href: "/playbook", label: "Playbook" },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, viewer }: { children: React.ReactNode; viewer: ActorContext | null }) {
+  const pathname = usePathname();
+  const owner = Boolean(viewer && isOwner(viewer));
+  const canUseChat = owner || Boolean(viewer?.grants.some((grant) =>
+    grant.permission === "READ" || grant.permission === "SUGGEST" || grant.permission === "APPROVE"));
+  const canReview = owner || Boolean(viewer?.grants.some((grant) => grant.permission === "APPROVE"));
+  const canRead = owner || Boolean(viewer?.grants.some((grant) =>
+    grant.permission === "READ" || grant.permission === "APPROVE"));
+  const visibleNavigation = navigation.filter((item) => item.href === "/"
+    || (item.href === "/chat" && canUseChat)
+    || (item.href === "/review" && canReview)
+    || (item.href === "/playbook" && canRead));
+
+  if (pathname === "/chat") return <ViewerProvider viewer={viewer}>{children}</ViewerProvider>;
+
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[rgb(247_244_238/92%)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-5 py-4 sm:px-8">
-          <Link className="group" href="/">
-            <span className="block text-sm font-bold tracking-[0.13em] text-[var(--accent)] uppercase">MLC</span>
-            <span className="block text-xs text-[var(--muted)] group-hover:text-[var(--foreground)]">My Little Company</span>
+    <ViewerProvider viewer={viewer}><div className="min-h-screen">
+      <header className="app-header">
+        <div className="mx-auto flex max-w-[90rem] items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
+          <Link className="brand-lockup" href="/">
+            <BrandMark className="size-10 shrink-0" />
+            <span className="brand-wordmark">
+              <span>My Little</span>
+              <span>Company</span>
+            </span>
           </Link>
-          <nav aria-label="Primary navigation" className="flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)] p-1 shadow-sm">
-            {navigation.map((item) => (
-              <Link className="rounded-full px-3 py-2 text-sm font-medium text-[var(--muted)] hover:bg-[#efe7dc] hover:text-[var(--foreground)] sm:px-4" href={item.href} key={item.href}>
-                {item.label}
-              </Link>
-            ))}
+
+          <nav aria-label="Primary navigation" className="primary-navigation">
+            {visibleNavigation.map((item) => {
+              const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+              return (
+                <Link
+                  aria-current={active ? "page" : undefined}
+                  className="navigation-link"
+                  data-active={active}
+                  href={item.href}
+                  key={item.href}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
-          <span className="hidden rounded-full bg-[#eee4d8] px-3 py-2 text-xs font-semibold text-[var(--accent-strong)] sm:block">Demo company</span>
+
+          {viewer ? (
+            <div className="flex items-center gap-2">
+              <Link className="demo-company-badge" href="/workspace">
+                <span aria-hidden="true" className="status-dot" />
+                {viewer.displayName}
+              </Link>
+              <SignOutButton />
+            </div>
+          ) : <Link className="demo-company-badge" href="/login">Sign in</Link>}
         </div>
       </header>
       {children}
-    </div>
+    </div></ViewerProvider>
   );
 }

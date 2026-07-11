@@ -2,10 +2,14 @@ import { describe, expect, it } from "vitest";
 import { isMemoryEligible } from "@/domain/retrieval";
 import type { ActorContext, HydratedMemory } from "@/domain/types";
 
-const actor: ActorContext = { userId: "employee", companyId: "company-a", roles: ["EMPLOYEE"], demoMode: true };
+const actor: ActorContext = {
+  userId: "employee", companyId: "company-a", email: "employee@example.com",
+  displayName: "Employee", roles: ["EMPLOYEE"],
+  grants: [{ permission: "READ", scope: { level: "COMPANY" } }], demoMode: true,
+};
 const memory: HydratedMemory = {
-  record: { id: "memory", companyId: "company-a", type: "POLICY", status: "APPROVED", currentVersion: 1, title: "Policy", appliesToRoles: ["EMPLOYEE"], sensitivity: "INTERNAL", tags: [], effectiveFrom: "2026-07-11T00:00:00.000Z", createdAt: "2026-07-11T00:00:00.000Z", updatedAt: "2026-07-11T00:00:00.000Z", indexStatus: "READY" },
-  version: { memoryId: "memory", companyId: "company-a", version: 1, title: "Policy", statement: "A current rule.", rationale: null, appliesToRoles: ["EMPLOYEE"], sensitivity: "INTERNAL", tags: [], effectiveFrom: "2026-07-11T00:00:00.000Z", sourceRefs: [{ sourceId: "source", label: "Owner statement" }], approvedBy: "owner", approvedAt: "2026-07-11T00:00:00.000Z", createdAt: "2026-07-11T00:00:00.000Z" },
+  record: { id: "memory", companyId: "company-a", type: "POLICY", status: "APPROVED", currentVersion: 1, title: "Policy", scope: { level: "COMPANY" }, appliesToRoles: ["EMPLOYEE"], sensitivity: "INTERNAL", tags: [], effectiveFrom: "2026-07-11T00:00:00.000Z", createdAt: "2026-07-11T00:00:00.000Z", updatedAt: "2026-07-11T00:00:00.000Z", indexStatus: "READY" },
+  version: { memoryId: "memory", companyId: "company-a", version: 1, title: "Policy", scope: { level: "COMPANY" }, statement: "A current rule.", rationale: null, appliesToRoles: ["EMPLOYEE"], sensitivity: "INTERNAL", tags: [], effectiveFrom: "2026-07-11T00:00:00.000Z", sourceRefs: [{ sourceId: "source", label: "Owner statement" }], approvedBy: "owner", approvedAt: "2026-07-11T00:00:00.000Z", createdAt: "2026-07-11T00:00:00.000Z" },
 };
 
 describe("retrieval eligibility", () => {
@@ -17,5 +21,21 @@ describe("retrieval eligibility", () => {
     expect(isMemoryEligible({ ...memory, record: { ...memory.record, appliesToRoles: ["OWNER"] } }, actor)).toBe(false);
     expect(isMemoryEligible({ ...memory, version: { ...memory.version, version: 2 } }, actor)).toBe(false);
     expect(isMemoryEligible({ ...memory, record: { ...memory.record, appliesToRoles: ["MARKETING"] } }, { ...actor, roles: ["OWNER"] })).toBe(true);
+    const departmentMemory = {
+      ...memory,
+      record: {
+        ...memory.record,
+        scope: { level: "DEPARTMENT" as const, organizationalUnitId: "unit-front-desk" },
+      },
+      version: {
+        ...memory.version,
+        scope: { level: "DEPARTMENT" as const, organizationalUnitId: "unit-front-desk" },
+      },
+    };
+    expect(isMemoryEligible(departmentMemory, actor)).toBe(true);
+    expect(isMemoryEligible(departmentMemory, {
+      ...actor,
+      grants: [{ permission: "READ", scope: { level: "DEPARTMENT", organizationalUnitId: "unit-front-desk" } }],
+    })).toBe(true);
   });
 });

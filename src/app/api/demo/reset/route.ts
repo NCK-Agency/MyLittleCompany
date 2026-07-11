@@ -1,7 +1,12 @@
-import { resetDemoState } from "@/adapters/local/demo-state";
-import { ok } from "@/server/api-response";
+import { apiError, ok } from "@/server/api-response";
+import { requireActor } from "@/server/auth-context";
+import { companyService } from "@/server/container";
 
 export async function POST(): Promise<Response> {
-  const state = resetDemoState();
-  return ok({ companyId: state.company.id, resetAt: new Date().toISOString() });
+  try {
+    const company = await companyService.resetDemo(await requireActor());
+    return ok({ companyId: company.id, resetAt: new Date().toISOString() });
+  } catch (error) {
+    return apiError(error);
+  }
 }

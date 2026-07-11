@@ -40,6 +40,50 @@ Error:
 
 Exact routing may use Next.js route handlers or server actions. Preserve these logical contracts.
 
+### Authentication and membership routes
+
+- `GET|POST /api/auth/[...nextauth]` handles Auth.js demo or Cognito login.
+- `GET /api/me` returns the actor resolved from the current active membership.
+- `GET /api/memberships` lists members for an owner.
+- `POST /api/memberships` invites an identity with roles and scoped grants.
+- `PATCH /api/memberships/{userId}` updates non-owner roles, grants, or status.
+- `POST /api/memory-candidates` creates a source-backed manual suggestion when
+  the actor has `SUGGEST` for the submitted scope.
+
+Missing sessions return `UNAUTHENTICATED`/401. Authenticated requests without the
+required current grant return `FORBIDDEN`/403. Identity, company, roles, and grants
+from request bodies are ignored for ordinary product operations.
+
+### MCP OAuth and tool contracts
+
+- `GET /.well-known/oauth-protected-resource`
+- `GET /.well-known/oauth-authorization-server`
+- `POST /oauth/register`
+- `GET|POST /oauth/authorize`
+- `POST /oauth/token`
+- `POST /oauth/revoke`
+- `GET /oauth/jwks`
+- `GET|POST|DELETE /mcp` — stateless Streamable HTTP
+
+Auth.js owns the Cognito callback at `/api/auth/callback/cognito`; the OAuth
+broker reuses that signed-in session instead of handling Cognito credentials.
+Authorization requests require PKCE S256, the exact registered callback, the
+canonical `/mcp` resource, and `knowledge:read` and/or `knowledge:suggest`.
+
+The MCP server publishes exactly these tools:
+
+```ts
+search({ query }): { results: Array<{ id, title, url }> }
+fetch({ id }): { id, title, text, url, metadata? }
+suggest_company_knowledge({ content, idempotencyKey, scope? }):
+  | { status: "NO_DURABLE_KNOWLEDGE", message }
+  | { status: "PROPOSED", candidate: { id, title, statement, relation, reviewUrl } }
+```
+
+`search` and `fetch` return approved, current, indexed records only. Suggestions
+are idempotent, accept no identity or approval fields, and never become visible
+to retrieval before Review approval and successful indexing.
+
 ### POST `/api/demo/reset`
 
 Restores the demo company fixture.
@@ -81,11 +125,18 @@ Request:
 ```json
 {
   "assistantRole": "MARKETING",
-  "title": "Tuesday promotion"
+  "title": "Tuesday promotion",
+  "scope": { "level": "DEPARTMENT", "organizationalUnitId": "dept-marketing" }
 }
 ```
 
 Response contains the conversation.
+
+### GET `/api/conversations`
+
+Returns all conversations visible in the current company, ordered by most recent
+activity. Each conversation includes its assistant role and stable company or
+department scope so the client can reopen it without reconstructing context.
 
 ### GET `/api/conversations/{conversationId}/messages`
 
@@ -216,9 +267,52 @@ Query parameters:
 
 Default: current approved memories visible to the actor.
 
+### POST `/api/memories`
+
+Owner-only. Creates an approved, source-backed knowledge page without first
+creating a model suggestion. The server validates company and department scope and
+then runs the normal render-and-index flow.
+
+```json
+{
+  "title": "How we handle late arrivals",
+  "statement": "Front desk should call after ten minutes and offer the next available slot.",
+  "rationale": "Keeps the day moving while treating the customer fairly.",
+  "type": "POLICY",
+  "scope": { "level": "DEPARTMENT", "organizationalUnitId": "dept-front-desk" },
+  "appliesToRoles": ["FRONT_DESK", "EMPLOYEE"],
+  "conversationId": "conversation_...",
+  "messageIds": ["message_..."]
+}
+```
+
+When `conversationId` and `messageIds` are absent, the service creates a manual
+owner source. `/save-knowledge` uses this endpoint only after the owner confirms
+the form; it is not a model-callable approval tool.
+
 ### GET `/api/memories/{memoryId}`
 
 Returns current record, current version, source references, and version history.
+
+### PATCH `/api/memories/{memoryId}`
+
+Owner-only. Creates a new approved version of current company knowledge; it does
+not overwrite the existing version.
+
+```json
+{
+  "expectedMemoryVersion": 1,
+  "title": "Promotional discounts must not exceed 10%",
+  "statement": "Promotional discounts must not exceed 10%. Prefer complimentary add-ons.",
+  "rationale": "Protect margins and premium positioning.",
+  "scope": { "level": "COMPANY" },
+  "appliesToRoles": ["MARKETING", "SALES", "FRONT_DESK", "EMPLOYEE"]
+}
+```
+
+The expected version is mandatory. A stale edit returns `STALE_WRITE`. A
+successful response contains the current record, the new version, full version
+history, and truthful `indexStatus` after the immediate indexing attempt.
 
 ### POST `/api/memories/{memoryId}/retry-index`
 
@@ -230,14 +324,15 @@ Request:
 
 ```json
 {
-  "title": "Tuesday Promotion SOP",
-  "goal": "Launch and operate the approved Tuesday promotion",
-  "artifactId": "artifact_campaign_...",
-  "additionalInstructions": "Keep it simple for front desk staff"
+  "request": "Create a Tuesday promotion handoff checklist for the front desk.",
+  "saveAsSuggestion": false
 }
 ```
 
-Response contains a structured SOP draft and source memory references. Saving it as company knowledge creates a candidate.
+`request` is passed to the Operations model as the SOP goal. Approved memories
+remain mandatory constraints. Response contains a structured SOP draft and source
+memory references; `saveAsSuggestion=true` creates a candidate rather than
+approved knowledge.
 
 ### POST `/api/employee/answer`
 
@@ -337,6 +432,7 @@ Minimum stable codes:
 
 - `VALIDATION_ERROR`
 - `UNAUTHORIZED`
+- `UNAUTHENTICATED`
 - `FORBIDDEN`
 - `NOT_FOUND`
 - `CONFLICT`
@@ -358,3 +454,22 @@ Minimum stable codes:
 - Index retries do not create duplicate memory versions.
 - Conditional DynamoDB updates reject double approval or stale edits.
 - The client treats `409 CONFLICT` as a prompt to reload current state.
+
+## 7. Proof-first onboarding APIs
+
+All routes require an active owner membership and derive `companyId` and actor from the server session.
+
+| Route | Purpose |
+|---|---|
+| `POST /api/onboarding/sessions` | Create or resume an active session from a proof question. |
+| `GET /api/onboarding/sessions` | Load the current actor's active session, if any. |
+| `GET /api/onboarding/sessions/{sessionId}` | Load one company- and actor-scoped session view. |
+| `POST /api/imports` | Persist one selected paste or ChatGPT conversation and create an idempotent batch. |
+| `POST /api/imports/{batchId}/process` | Acquire a 30-second lease and perform one processing stage. |
+| `DELETE /api/imports/{batchId}` | Cancel an unfinished batch and tombstone its raw content. |
+| `POST /api/onboarding/sessions/{sessionId}/prove` | Answer the proof question using newly approved memories and require a matching citation. |
+| `DELETE /api/sources/{sourceId}/content` | Owner-delete raw imported content while retaining citation metadata. |
+
+Paste idempotency combines company, actor, session, provider, and normalized checksum. ChatGPT additionally includes the selected conversation ID. The client key remains accepted for request tracing but does not allow duplicate source batches. Batch and session updates carry optimistic versions; an active lease returns current state without starting a duplicate stage.
+
+The prove response contains `session`, a standard `GroundedAnswer`, and `searchStatus: READY | UPDATING | NEEDS_ATTENTION`. Search status never changes whether the structured approved record is company truth.

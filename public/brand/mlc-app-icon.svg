@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">My Little Company</title>
+  <desc id="description">Four colorful knowledge fragments forming the My Little Company mark.</desc>
+  <rect width="512" height="512" rx="112" fill="#12318a"/>
+  <path d="M64 64H248V184H187V248L147 184H64Z" fill="#6e91ef"/>
+  <path d="M264 64H448V248H378V141H264Z" fill="#f4d77a"/>
+  <path d="M64 264H134V371H248V448H64Z" fill="#547cec"/>
+  <path d="M264 319H341V378L396 300L448 264V448H264Z" fill="#ed654f"/>
+</svg>

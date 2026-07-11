@@ -1,0 +1,18 @@
+flowchart LR
+    U[Owner or employee] --> UI[Next.js web app]
+    UI --> API[Server routes]
+    API --> AUTH[Actor and scope checks]
+    API --> FLOW[Governed memory services]
+
+    FLOW --> DDB[(DynamoDB truth)]
+    FLOW --> MODEL[Bedrock Converse]
+    FLOW --> S3[(Private S3 docs)]
+    S3 --> INGEST[Direct KB ingestion]
+    INGEST --> KB[Bedrock Knowledge Base]
+    KB --> VEC[(S3 Vectors index)]
+
+    FLOW --> RETRIEVE[Retrieve then hydrate]
+    RETRIEVE --> KB
+    RETRIEVE --> DDB
+    RETRIEVE --> MODEL
+    FLOW --> OBS[Structured telemetry]

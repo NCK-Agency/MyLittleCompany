@@ -1,9 +1,21 @@
-import { ok } from "@/server/api-response";
-import { ownerActor } from "@/server/actors";
+import { apiError, ok } from "@/server/api-response";
+import { requireActor } from "@/server/auth-context";
 import { memoryService } from "@/server/container";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<Response> {
-  return ok(await memoryService.listMemories(ownerActor()));
+  try {
+    return ok(await memoryService.listMemories(await requireActor()));
+  } catch (error) {
+    return apiError(error);
+  }
+}
+
+export async function POST(request: Request): Promise<Response> {
+  try {
+    return ok(await memoryService.createMemoryPage(await request.json(), await requireActor()), 201);
+  } catch (error) {
+    return apiError(error);
+  }
 }

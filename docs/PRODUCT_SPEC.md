@@ -68,8 +68,12 @@ The owner can send messages to the Marketing Assistant and receive a response us
 **Acceptance criteria:**
 
 - Messages persist within the conversation.
+- The owner can list and reopen previous conversations.
+- Each conversation has an explicit company or department knowledge scope.
 - The response clearly separates approved company context from new recommendations.
 - Relevant sources appear as source chips when available.
+- A collapsible context panel shows sources used in the conversation, recent
+  approved knowledge eligible for its scope, and suggestions awaiting review.
 - Failure states do not lose the owner’s draft message.
 
 ### FR-03 Suggested company knowledge
@@ -114,7 +118,15 @@ The user can browse approved company knowledge by type and open a detail page.
 
 - Only approved or explicitly archived entries appear according to the chosen filter.
 - Each detail shows current statement, rationale, source, applicable roles, approver, approval date, and version.
+- An owner can directly amend the title, canonical statement, rationale, and role scope from the detail page.
+- A direct owner amendment creates a new approved immutable version, preserves prior versions, records the edit as a source, and refreshes the derived knowledge index.
+- The detail page distinguishes Playbook truth from assistant-search availability and exposes a retry when indexing fails.
 - Superseded versions remain available in history but are not shown as current truth.
+- The owner can browse pages by company and department and create an approved page directly.
+- The owner can filter the same approved records through Company basics,
+  Customers, Brand, Decisions and policies, and How we work. These are
+  presentation groups rather than additional memory types.
+- A page created with `/save-knowledge` references verified messages from the current conversation.
 
 ### FR-06 Approved-memory retrieval
 
@@ -125,6 +137,10 @@ The system retrieves relevant approved knowledge for a role and company.
 - Retrieval is always scoped by `companyId`.
 - Retrieval excludes proposed, rejected, archived, and superseded records by default.
 - Retrieval respects role scope.
+- Company-scoped knowledge is eligible in every department; department-scoped
+  knowledge is eligible only for that department.
+- A narrower department rule cannot silently override a company rule; it must be
+  represented and approved as an explicit exception.
 - Returned context includes memory ID, version, title, statement, rationale, and source IDs.
 - If no adequate context exists, the assistant says it lacks an approved company rule.
 
@@ -147,6 +163,8 @@ The assistant creates an SOP from an approved campaign or decision.
 
 - The SOP has title, purpose, owner, prerequisites, steps, checks, exceptions, and source references.
 - The SOP reflects the approved pricing and brand decision.
+- The SOP follows the owner's actual request rather than substituting a canned
+  demo procedure.
 - Saving the generated SOP creates a new suggestion requiring approval; it does not become approved automatically.
 
 ### FR-09 Employee Q&A
@@ -198,6 +216,28 @@ The presenter can restore the demo to its initial state.
 - It affects only the demo company.
 - It restores deterministic fixture data and removes demo-generated records.
 - It reports success or failure accurately.
+
+### FR-13 Login and scoped company access
+
+The owner can invite people and grant independent read, suggest, and approve
+access for the whole company or a department.
+
+**Acceptance criteria:**
+
+- Cognito managed login establishes deployed identity; local mode uses clearly
+  marked seeded accounts through the same server actor boundary.
+- Every request reloads an active membership; browser roles and scopes are ignored.
+- Owners can do anything and manage access without changing the primary navigation.
+- Department reads include relevant company knowledge but exclude sibling teams.
+- Delegated approvers decide suggestions in scope but cannot directly amend the Playbook.
+- Disabled membership and grant changes take effect on the next request.
+- Non-owners see only their own conversation history.
+- Compatible MCP clients can link one My Little Company account, search/fetch only
+  eligible approved knowledge, and create source-backed suggestions when both
+  OAuth consent and the current membership allow it.
+- Connected assistants expose no approval operation. A suggestion remains outside
+  retrieval until a scoped human reviewer resolves any conflict, approves it,
+  and indexing succeeds.
 
 ## 4. Non-functional requirements
 
@@ -255,6 +295,15 @@ The presenter can restore the demo to its initial state.
 - As an employee, I want to see where the answer came from so I can trust it.
 - As an employee, I want ambiguity surfaced instead of receiving a confident invention.
 
+### Connected assistant user
+
+- As an external assistant user, I want the assistant to retrieve current company
+  context without copying it between products.
+- As a contributor, I want a durable rule noticed in an external conversation to
+  arrive in Review with a small evidence excerpt, not synchronize my whole chat.
+- As a reviewer, I want approval to remain in My Little Company so an external
+  assistant cannot silently change company truth.
+
 ### Presenter
 
 - As a presenter, I want a deterministic resettable demo so the full story works reliably.
@@ -288,3 +337,17 @@ Do not treat these as MVP requirements:
 - Voice-first experience.
 - Real-time collaborative editing.
 - Native mobile application.
+
+## 8. Proof-first company onboarding
+
+The Slice 1 activation target is one source-backed proof in under four minutes:
+
+1. A signed-in owner writes one real company question.
+2. The owner pastes relevant text or selects one conversation from a ChatGPT `conversations.json` export.
+3. My Little Company proposes at most twelve durable knowledge items and prioritizes three for setup.
+4. The owner approves, edits, or ignores each proposal. Imported content never becomes company truth automatically.
+5. After the first relevant approval, My Little Company answers the original question and cites knowledge approved from that import.
+
+ChatGPT exports are parsed in the browser. Only the selected conversation is uploaded. Quick setup accepts at most 40,000 selected characters. Approved company basics become normal `COMPANY_FACT` suggestions; onboarding never silently rewrites the Company profile or creates a second folder taxonomy.
+
+Company creation, invited-user welcome, WhatsApp text export, Google Drive, website, and Notion connectors remain later slices and require separate implementation checkpoints.

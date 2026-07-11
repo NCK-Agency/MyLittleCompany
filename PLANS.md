@@ -2,7 +2,471 @@
 
 This is the live execution plan. Codex must update it before and during multi-file work. Keep completed items and verification evidence so future sessions can understand what actually happened.
 
+## Active checkpoint: hackathon AWS architecture refresh
+
+**Outcome:** Replace the broad implementation-oriented architecture document with
+a judge-readable, hackathon-first schema that keeps AWS visibly central to the
+governed-memory loop: Bedrock Converse for generation, DynamoDB for approved
+truth, S3 for canonical documents, and Bedrock Knowledge Bases backed by S3
+Vectors for derived retrieval. Record an evidence-based critique and the
+improvements required before the real-AWS smoke test.
+
+**Affected files:** `docs/ARCHITECTURE.md`, this plan, and a rendered architecture
+diagram under `diagrams/`. No application behavior, AWS resource, credential, or
+deployment change is in scope.
+
+**Implementation steps:**
+
+- [x] Reconcile the actual ports, AWS adapters, data model, security boundaries,
+  and current Bedrock/Knowledge Base guidance into one concise architecture.
+- [x] Render a source-controlled architecture diagram that distinguishes the
+  approval write path, derived indexing path, and grounded retrieval path.
+- [x] Critique current complexity and reliability risks; adopt only improvements
+  that strengthen the live demo without broadening product scope.
+- [x] Record the resulting architecture target and verify the document,
+  Mermaid source, rendered artifacts, and repository diff are internally
+  consistent.
+
+**Verification:** Inspect the rendered diagram, validate Mermaid rendering,
+review the revised architecture against the existing ports and adapters, and run
+`git diff --check`. This documentation-only checkpoint does not alter runtime
+code, so the existing application verification evidence remains authoritative.
+
+**Rollback:** Revert only this checkpoint's documentation and diagram artifacts.
+The application, AWS account, and existing canonical memory data remain unchanged.
+
+**Verification results (2026-07-11):** The refreshed schema was checked against
+the current composition root, MemoryService, retrieval service, Bedrock model
+gateway, Knowledge Base adapter, data model, and security constraints. Current
+Bedrock documentation was consulted through Context7. Mermaid rendered
+successfully into an editable Excalidraw scene plus SVG and PNG, and the PNG was
+visually inspected. `git diff --check` passes. This checkpoint identifies, but
+does not implement, two follow-up hardening changes: separate approval confirmation
+from indexing work and use a stable current search document rather than one
+search document per immutable version.
+
 ## Active plan: MVP vertical slice
+
+### Current checkpoint: pooled multi-company isolation hardening
+
+**Outcome:** Keep the hackathon's shared DynamoDB, S3, and Bedrock Knowledge Base
+foundation while making company scope part of every business-data partition key
+and rejecting incomplete or cross-company retrieval metadata before structured
+hydration. Two companies must be able to reuse the same parent and child IDs
+without overwriting, listing, or retrieving one another's data.
+
+**Affected files:** AWS DynamoDB and Bedrock Knowledge Base adapters; AWS smoke
+script; focused DynamoDB/retrieval tests; architecture, data-model, security,
+project-memory, decision, backlog, and live-plan documentation.
+
+**Implementation steps:**
+
+- [x] Prefix message and memory-version partitions with the trusted `companyId`
+  while preserving existing repository interfaces and access patterns.
+- [x] Update demo reset and AWS smoke cleanup for the new tenant-prefixed child
+  partitions without adding runtime table scans.
+- [x] Make Knowledge Base hit validation fail closed when required company,
+  approval, role, sensitivity, memory, or version metadata is absent or malformed.
+- [x] Add collision fixtures that deliberately reuse conversation, message,
+  memory, and version identifiers across two companies.
+- [x] Record the pooled-isolation decision and run focused verification.
+- [x] Run the complete unit, production-build, and browser verification suite.
+
+**Verification:** Focused DynamoDB and retrieval tests, then `pnpm lint`,
+`pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm test:e2e`, and
+`git diff --check`. Real AWS smoke remains subject to the already documented
+external resource and quota blockers.
+
+**Rollback:** Revert this checkpoint's key builders, smoke keys, strict metadata
+checks, tests, and documentation together. No remote migration or AWS resource
+mutation is performed. The repository has no production data migration in scope;
+seeded/demo data can be recreated after the key-shape change.
+
+**Verification results (2026-07-11):** Focused isolation/retrieval tests PASS
+(3 files, 24 tests); `pnpm lint` PASS; `pnpm typecheck` PASS; `pnpm test` PASS
+(24 files, 93 tests); `pnpm build` PASS (Next.js 16.2.10, webpack);
+`pnpm test:e2e` PASS (6 Chromium journeys); `node --check
+scripts/smoke-aws.mjs` PASS; old unprefixed child-key audit PASS; `git diff
+--check` PASS. The first sandboxed browser run could not bind localhost port
+3000 (`EPERM`); the approved non-sandboxed rerun passed. Real AWS smoke was not
+run because it mutates configured cloud resources and the existing AWS
+resource/quota blockers remain outside this checkpoint.
+
+### Current checkpoint: proof-first company onboarding
+
+**Outcome:** Give an already signed-in owner a guided path from one pasted or
+selected ChatGPT conversation to source-backed knowledge suggestions, explicit
+approval, and a proof answer that cites at least one memory approved during the
+same onboarding session. The answer may use the structured-memory fallback while
+Knowledge Base indexing is still updating, but the UI must not claim search is
+ready.
+
+**Affected files:** Onboarding/import domain types, schemas, repositories,
+services, local/AWS composition, prompts, and route contracts; workspace and
+Playbook entry points; session-based onboarding pages and client-side ChatGPT
+export parsing; focused unit/component/E2E tests; canonical product, UX,
+architecture, data, security, API, backlog, and decision documentation.
+
+**Implementation steps:**
+
+- [x] Add source-provider, onboarding-session, import-batch, and imported-item
+  schemas plus explicit lifecycle and retention rules.
+- [x] Add import/source repository contracts and local/AWS persistence without
+  changing the existing seven memory types or five Playbook presentation groups.
+- [x] Add bounded paste and selected ChatGPT-conversation normalization,
+  multi-candidate extraction, ranking, conflict classification, leases,
+  cancellation, idempotency, and structured proof retrieval.
+- [x] Add owner-scoped session/import/proof/source-deletion APIs with safe error
+  envelopes and company isolation.
+- [x] Add workspace and empty-Playbook entry points plus Goal, Source, Review,
+  and Prove onboarding screens with resume, empty, loading, failure, and mobile
+  states.
+- [x] Add parser, lifecycle, security, service, UI, and end-to-end coverage; then
+  run all required verification commands and record results here.
+
+**Verification:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and
+`pnpm test:e2e`. The E2E path must prove an owner imports one selected source,
+approves one item, receives a cited answer using that newly approved memory, and
+sees indexing status separately. AWS smoke remains explicit and may be blocked
+only by missing external resources already documented for this repository.
+
+**Rollback:** Remove the onboarding entry points, routes, services, adapters,
+and additive DynamoDB/S3 item types. Existing company, conversation, candidate,
+memory, membership, OAuth, and index records remain valid; no destructive
+migration or automatic approval is introduced.
+
+**Verification results (2026-07-11):** `pnpm lint`, `pnpm typecheck`, `pnpm test`
+(24 files, 84 tests), `pnpm build`, and `pnpm test:e2e` (6 Chromium journeys)
+pass. Paste and selected-ChatGPT onboarding both approve a 15% policy and produce
+a cited proof answer; mobile width and the original salon loop also pass.
+`node --check scripts/smoke-aws.mjs` and `git diff --check` pass. The real AWS
+smoke path now includes the onboarding extraction prompt plus Knowledge Base
+ingestion/retrieval, but could not run locally because `AWS_REGION`, model,
+Knowledge Base/data source, DynamoDB table, and S3 bucket configuration are not
+present in the shell environment.
+
+### Current checkpoint: private ChatGPT app package
+
+**Outcome:** Package the existing tool-only MCP connector as a polished private
+ChatGPT Developer Mode app named **My Little Company**, with clear server identity,
+ChatGPT-oriented tool-selection metadata, branded icon, OAuth/DCR setup, test
+prompts, and an operator handoff for creating and refreshing the Draft app.
+
+**Archetype:** `tool-only`. The governed knowledge flow benefits from native
+ChatGPT narration and citations; an iframe widget would duplicate Review and
+weaken the product boundary that approval happens inside My Little Company.
+
+**Affected files:** MCP server identity and tool descriptors; branded public app
+icon; ChatGPT app setup documentation and tests; README and live plan.
+
+**Implementation steps:**
+
+- [x] Add ChatGPT-visible app title, description, icon, concise instructions,
+  action-oriented tool descriptions, argument descriptions, and invocation text.
+- [x] Preserve the standard company-knowledge `search`/`fetch` schemas and keep
+  `suggest_company_knowledge` as the only confirmed write.
+- [x] Prepare the exact Draft app profile, Developer Mode setup steps, OAuth
+  expectations, test prompts, refresh procedure, and deployment prerequisites.
+- [x] Verify the local MCP app contract, OAuth flow, full test/build/E2E suite,
+  and identify any external step that requires a deployed HTTPS origin.
+
+**Rollback:** Remove only ChatGPT-facing identity assets and metadata. The
+client-neutral MCP/OAuth service and all company knowledge remain unchanged.
+
+**Verification results (2026-07-11):** Static contract review confirms the
+`tool-only` archetype, exact standard `search`/`fetch`, one confirmed suggestion
+write, OAuth metadata, server title/description/icon, and no unnecessary UI
+resource. `pnpm lint` PASS; `pnpm typecheck` PASS; `pnpm test` PASS (22 files,
+72 tests); `pnpm build` PASS; `pnpm test:e2e` PASS (4 Chromium tests); authenticated
+Streamable HTTP initialization and real tool-call tests PASS; `git diff --check`
+PASS.
+
+**External creation status:** The Draft app was not created in a ChatGPT account.
+The repository has no configured homepage or GitHub deployment and no public
+HTTPS MCP origin is present in the workspace environment. `docs/CHATGPT_APP.md`
+contains the exact profile and creation sequence once a deployment URL exists.
+
+### Current checkpoint: client-neutral MCP interoperability
+
+**Outcome:** Make the remote connector work with any compatible MCP client—not
+only ChatGPT and Codex—while preserving exact redirect binding, PKCE, explicit
+consent, and membership-owned authorization. Verify Claude Code, Gemini CLI, and
+Kiro configuration paths against their current official documentation.
+
+**Affected files:** OAuth client/authorization validation and consent copy; OAuth
+tests; connector setup documentation; security, architecture, and decision
+language.
+
+**Implementation steps:**
+
+- [x] Replace product-name callback allowlists with protocol-based HTTPS and
+  native loopback rules; continue rejecting insecure remote callbacks.
+- [x] Show the registered client and return host during consent.
+- [x] Add generic-client and regression coverage without weakening PKCE,
+  resource binding, scope checks, or live membership resolution.
+- [x] Document ChatGPT, Codex, Claude Code, Gemini CLI, Kiro, and the generic
+  compatibility contract.
+- [x] Run lint, typecheck, unit tests, build, E2E, and diff validation.
+
+**Rollback:** Restore the narrower callback allowlist. Existing OAuth clients,
+tokens, memberships, candidates, and approved knowledge require no migration.
+
+**Verification results (2026-07-11):** `pnpm lint` PASS; `pnpm typecheck` PASS;
+`pnpm test` PASS (22 files, 72 tests); `pnpm build` PASS; `pnpm test:e2e` PASS
+(4 Chromium tests); `git diff --check` PASS. OAuth coverage accepts generic HTTPS,
+IPv4/IPv6/localhost loopback callbacks and rejects insecure remote HTTP and
+credential-bearing callbacks. Current official Claude Code, Gemini CLI, and Kiro
+documentation confirms remote HTTP MCP and browser OAuth; Gemini and Kiro
+explicitly document dynamic client registration.
+
+### Current checkpoint: Cognito scoped access and two-way MCP integration
+
+**Outcome:** Deliver two release gates on one authorization model: first, real
+Cognito/Auth.js login with company/department `READ`, `SUGGEST`, and `APPROVE`
+grants; second, a tool-only remote MCP endpoint that lets ChatGPT and Codex search
+approved company knowledge and create source-backed suggestions without gaining
+approval authority.
+
+**Affected files:** Domain authorization and membership types/schemas; membership,
+identity, OAuth, and repository ports plus local/AWS adapters; Auth.js/session and
+API actor resolution; People & access UI; candidate/retrieval services; MCP/OAuth
+routes; fixtures, tests, environment/deployment configuration, and canonical
+product/security/architecture documentation.
+
+**Implementation steps:**
+
+- [x] Add scoped grants, membership persistence, centralized permission checks,
+  seeded demo identities, and Cognito invitation administration.
+- [x] Add Auth.js Cognito managed login, demo-session parity, server-owned actor
+  resolution, and replace hard-coded route actors.
+- [x] Enforce permission and conversation ownership checks across retrieval,
+  suggestions, approval, company settings, and owner-only operations.
+- [x] Add owner-only People & access administration without changing primary
+  navigation.
+- [x] Add the Cognito-backed MCP OAuth broker, token verification, and persisted
+  OAuth client/code/refresh state.
+- [x] Add the stateless `/mcp` route with standard `search`/`fetch` tools and an
+  idempotent `suggest_company_knowledge` tool.
+- [x] Reuse one validated, secret-screened, conflict-aware suggestion pipeline and
+  complete explicit conflict resolution in Review.
+- [x] Update configuration, setup, API/security/data/architecture decisions, and
+  private ChatGPT/Codex connection instructions.
+- [x] Run lint, typecheck, unit tests, build, E2E, and MCP contract/runtime checks.
+
+**Verification:** Permission-matrix tests must cover the seeded owner,
+contributor, approver, and reader. OAuth tests must cover discovery, redirect
+validation, PKCE, resource/scopes, replay, refresh rotation, revocation, and
+membership revocation. MCP tests must prove exact company-knowledge schemas,
+approved-only retrieval, denied cross-scope access, idempotent suggestions, and
+no approval tool. Completion requires `pnpm lint`, `pnpm typecheck`, `pnpm test`,
+`pnpm build`, and `pnpm test:e2e`, plus a local `/mcp` initialization/tool smoke.
+
+**Rollback:** Set `MCP_ENABLED=false`, return `AUTH_MODE` to `demo`, remove the
+new auth/MCP routes and adapters, and restore demo actor resolution. Existing
+company, conversation, candidate, and memory records require no destructive
+migration; suggestions created through MCP remain ordinary auditable candidates.
+
+**Verification results (2026-07-11):** `pnpm lint` PASS; `pnpm typecheck`
+PASS; `pnpm test` PASS (22 files, 72 tests); `pnpm build` PASS; `pnpm test:e2e`
+PASS (4 Chromium tests). MCP contract coverage verifies the exact tool list and
+schemas, no approval tool, an authenticated stateless Streamable HTTP
+initialization, and a real tool call. OAuth coverage verifies callback allowlists,
+PKCE/resource binding, code replay rejection, access-token validation, refresh
+rotation, scope non-expansion, and production key configuration. `git diff
+--check` PASS.
+
+**Remaining deployment smoke:** Real Cognito email delivery, managed login,
+ChatGPT Developer Mode, Codex OAuth, and the AWS-backed repository path require
+the external resources and secrets documented in `docs/MCP_CONNECT.md` and
+`docs/AWS_SETUP.md`; they were not simulated as successful.
+
+### Current checkpoint: roadmap reconciliation for conversational knowledge
+
+**Outcome:** Incorporate the strongest parts of the earlier knowledge-base review
+into the scoped workspace: make the Playbook understandable by business topic,
+show the approved knowledge connected to the current conversation, and ensure the
+Operations Assistant follows the owner’s actual request.
+
+**Affected files:** Playbook and chat workspace components and styles; model
+gateway and Operations prompt inputs; focused unit/E2E tests; product, UX,
+project-memory, backlog, and decision documentation.
+
+**Implementation steps:**
+
+- [x] Add five owner-friendly presentation groups over the existing seven memory
+  types without creating a second taxonomy or changing authoritative records.
+- [x] Add a collapsible conversation knowledge panel showing used sources, recent
+  approved knowledge, and unresolved suggestions.
+- [x] Pass the actual Operations request to local and Bedrock SOP generation.
+- [x] Record which Slite/standards-inspired ideas are adopted now and which remain
+  deferred.
+- [x] Run lint, typecheck, unit tests, build, E2E, and responsive visual QA.
+
+**Verification:** Category filtering, source-backed context display, Operations
+request propagation, drawer accessibility, and mobile overflow must be covered.
+Run `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and
+`pnpm test:e2e`.
+
+**Verification results (2026-07-11):** `pnpm lint` PASS; `pnpm typecheck` PASS;
+`pnpm test` PASS (16 files, 44 tests); `pnpm build` PASS; `pnpm test:e2e` PASS
+(3 tests). Desktop and mobile screenshots confirmed the context drawer and topic
+navigation, and the mobile browser assertion found no horizontal overflow.
+
+**Rollback:** Revert this checkpoint's presentation filters, context drawer,
+Operations request input, tests, and ADR-026. The company/department hierarchy
+and approved memory records remain unchanged.
+
+### Current checkpoint: scoped knowledge workspace and persistent chat
+
+**Outcome:** Make My Little Company feel like one coherent work environment: a
+ChatGPT-style persistent conversation workspace, a Notion-like Company Playbook
+organized by company and department, and a `/save-knowledge` command that turns
+selected conversation context into an owner-confirmed, source-backed knowledge
+page.
+
+**Affected files:** domain types and schemas; conversation and memory repository
+ports plus local/AWS adapters; conversation, company, and memory services and API
+routes; the app shell, chat, assistant-ui, Playbook components, and global styles;
+focused unit/component/E2E tests; product, UX, architecture, data-model, backlog,
+and decision documentation.
+
+**Implementation steps:**
+
+- [x] Add a company-rooted organizational-unit hierarchy and distinct knowledge
+  scope fields without weakening company, role, sensitivity, or approval checks.
+- [x] Add conversation listing, reopening, title updates, and persisted message
+  loading behind the existing `ConversationRepository`.
+- [x] Replace the assistant-card chat shell with persistent thread history and a
+  full-height, focused conversation surface.
+- [x] Add `/save-knowledge` as a UI command that opens an owner confirmation form;
+  never let a model execute approval directly.
+- [x] Add owner-created knowledge pages and group the Playbook by company and
+  department while preserving immutable versions and indexing truthfulness.
+- [x] Update durable decisions and acceptance criteria for hierarchy, inheritance,
+  persistent conversations, and the knowledge workspace.
+- [x] Run lint, typecheck, unit tests, build, E2E, and desktop/mobile visual QA.
+
+**Verification:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and
+`pnpm test:e2e`. Browser verification must cover reopening a chat, using
+`/save-knowledge`, manually creating a department page, company/department
+retrieval isolation, mobile navigation, no horizontal overflow, and truthful
+indexing status.
+
+**Verification results (2026-07-11):** `pnpm lint` PASS; `pnpm typecheck` PASS;
+`pnpm test` PASS (16 files, 44 tests); `pnpm build` PASS; `pnpm test:e2e` PASS
+(3 tests). Desktop and mobile Chat plus desktop Playbook were visually inspected.
+Webpack development mode is used because the current Turbopack development build
+did not include newly appended global CSS; ADR-025 records that reliability choice.
+
+**Rollback:** Revert only this checkpoint's scope fields, repository methods, API
+routes, workspace components, styles, tests, and documentation. Existing approved
+memory versions remain valid because legacy records default to company scope.
+
+### Current checkpoint: customer-facing product naming
+
+**Outcome:** Use “My Little Company” consistently in customer- and
+judge-facing copy, while reserving “MLC” for internal code, technical identifiers,
+and backlog ticket IDs.
+
+**Affected files:** customer-facing landing, chat, review-card, and pitch copy;
+focused UI tests; naming guidance in project and UX documentation.
+
+**Implementation steps:**
+
+- [x] Replace visible “MLC” abbreviations with “My Little Company.”
+- [x] Keep internal component names, CSS hooks, data-part names, environment
+  fixtures, and ticket IDs unchanged.
+- [x] Record the naming rule in durable product and UX documentation.
+- [x] Run focused tests, lint, typecheck, and a customer-facing copy audit.
+
+**Verification:** No visible application or pitch-script sentence should use the
+acronym. `pnpm lint`, `pnpm typecheck`, focused unit tests, and `git diff --check`
+must pass.
+
+**Rollback:** Revert only the naming-copy, test expectation, documentation, and
+this checkpoint changes. No data, API, domain, or cloud behavior changes.
+
+**Verification results (2026-07-11):**
+
+```text
+Customer-facing app copy audit: PASS (no visible “MLC” strings)
+Pitch script copy audit:       PASS
+Pitch deck render QA:          PASS (7/7 slides across both decks inspected at full size)
+Pitch template fidelity:       PASS
+Pitch overflow check:          PASS
+pnpm lint:                     PASS
+pnpm typecheck:                PASS
+pnpm test:                     PASS (16 files, 42 tests)
+pnpm build:                    PASS (Next.js 16.2.10, webpack)
+pnpm test:e2e:                 PASS (2 Chromium tests)
+git diff --check:              PASS
+```
+
+The fixed-width process card in the pitch uses “WE SUGGEST” rather than forcing
+the full product name into a one-line slot. The same naming rule permits natural
+contextual phrases such as “your company” and “the Playbook,” but never introduces
+the acronym to customers or judges.
+
+### Current checkpoint: AWS-backed salon vertical slice
+
+**Outcome:** Preserve the verified local demo while adding production-capable
+AWS adapters for Bedrock inference, DynamoDB state, S3 canonical documents, and
+Bedrock Knowledge Base retrieval behind hardened ports.
+
+**Implementation order:**
+
+- [x] Use the existing Phase 0–1 baseline and create `codex/aws-vertical-slice`.
+- [x] Harden repository atomicity, idempotency scope, retrieval hydration, errors, and composition.
+- [x] Add validated local/AWS environment modes and server-only AWS SDK clients.
+- [x] Implement Bedrock, DynamoDB, S3, and Knowledge Base adapters.
+- [x] Add AWS smoke and E2E commands while preserving all local checks.
+- [x] Update setup, deployment, architecture, decisions, backlog, and verification evidence.
+
+**Verification:** Existing local commands remain mandatory. AWS commands are
+implemented and unit-tested without credentials; real `smoke:aws` and AWS E2E
+remain blocked until the documented console resources and credentials exist.
+
+**Rollback:** Switch back to the initial Phase 0–1 commit. No AWS resource
+creation or remote deployment is performed by this code implementation.
+
+**Scope guard:** No conflict UX, imports, voice, sponsor integrations, billing,
+additional assistants, or production authentication.
+
+**Implementation note:** The earlier audit expected an unborn repository, but the
+workspace already contained baseline commit `3efafd5` on `main` with `origin/main`.
+That history was preserved; no remote was created, changed, or pushed.
+
+**Current blockers:** Console provisioning, IAM credentials, Netlify Functions
+variables, real AWS smoke/E2E, and redeployment require external account access.
+MLC-014 and MLC-015 remain IN_PROGRESS until exercised against those resources;
+MLC-016 is BLOCKED for the same reason.
+
+**Verification results (2026-07-11):**
+
+```text
+pnpm lint:         PASS (0 warnings)
+pnpm typecheck:    PASS
+pnpm test:         PASS (14 files, 35 tests)
+pnpm test:e2e:     PASS (2 Chromium tests, salon flow included)
+pnpm build:        PASS (Next.js 16.2.10, webpack)
+git diff --check:  PASS
+pnpm smoke:aws:    BLOCKED (required AWS variables/resources absent; fail-fast validated)
+pnpm test:e2e:aws: BLOCKED (same external AWS setup)
+```
+
+**AWS account bootstrap status (2026-07-11):** Local AWS access now uses the
+`mlc-developer` profile in `us-east-1`, which assumes
+`MyLittleCompanyDeveloperRole` through the login-only
+`MyLittleCompanyDeveloperLogin` identity. The identity has no access keys; the
+cached root CLI login was removed. Bedrock control-plane access, Knowledge Base
+listing, DynamoDB listing, and S3 listing all pass, and Nova Lite plus Titan Text
+Embeddings V2 report `ACTIVE`. A capped Nova Lite inference smoke is still
+blocked because the new account's applied Nova Lite TPM and daily-token quotas
+are both `0`. Quota request `1f6d3668cc8e49aaa0bcbfd00659422aagxiYgGT`
+requests the minimum valid cross-region review value (`8,000,001`) and is
+`CASE_OPENED` under AWS Support case `178377495500286`. Root-account MFA is
+enabled (user-confirmed 2026-07-11). DynamoDB, S3,
+Knowledge Base, Cognito, and deployment resources have not yet been provisioned.
 
 ### Completed checkpoint: Phase 0 Netlify-ready foundation
 
@@ -174,3 +638,381 @@ Remaining work begins at Phase 2: implement Amazon Bedrock, DynamoDB/S3, and
 Bedrock Knowledge Base adapters behind the existing ports. The Netlify-hosted
 local demo uses ephemeral file-backed state and may reset on a cold function;
 durable deployed state requires the planned AWS adapters.
+
+## Active parallel checkpoint: hackathon identity and five-minute pitch
+
+**Outcome:** Lock the approved bold blue visual identity and deliver a three-slide
+interactive pitch that uses no more than 90 seconds before handing off to the live
+salon demo.
+
+**Affected files:** `DESIGN.md`, `public/brand/`, and pitch deliverables under
+`outputs/`. No application or Phase 2 implementation files are in scope.
+
+**Implementation steps:**
+
+- [x] Save the approved blue brand board as the visual reference.
+- [x] Record the approved color, typography, logo, and motion rules in `DESIGN.md`.
+- [x] Build three audience-facing slides with complete speaker notes.
+- [x] Add a clickable local-demo handoff on the final slide.
+- [x] Render and inspect every slide at full size.
+- [x] Run presentation overflow/overlap checks and record verification.
+
+**Verification:** Render all slides, inspect each slide and the deck montage, run
+the presentation layout test, and confirm the exported PowerPoint contains three
+slides plus speaker notes.
+
+**Rollback:** Remove only the new brand and pitch artifacts and this checkpoint.
+No runtime state, application code, or cloud resources are changed.
+
+**Verification results (2026-07-11):**
+
+```text
+Artifact-tool slide render: PASS (3/3 slides inspected at full size)
+LibreOffice-compatible render: PASS (3/3 slides inspected at full size)
+slides_test.py: PASS (no overflow detected)
+Speaker notes: PASS (notesSlide1 through notesSlide3 present)
+Live-demo hyperlink: PASS (Marketing URL embedded on slide 3)
+```
+
+## Active parallel checkpoint: alternate chat-to-Playbook pitch
+
+**Outcome:** Deliver a second three-slide pitch whose single clear message is:
+owners chat normally, My Little Company notices durable business knowledge, a human approves it,
+and the approved knowledge is saved to the company Playbook for reuse.
+
+**Affected files:** One new PowerPoint deliverable under `outputs/` plus this plan
+entry. The approved visual identity and existing pitch remain unchanged.
+
+**Implementation steps:**
+
+- [x] Add a minimal opening slide with the approved logo, product name, and promise.
+- [x] Replace audience-facing “MLC” abbreviations with “My Little Company” across the app, pitch decks, demo script, and public project copy.
+- [x] Show the valuable company rule inside a normal chat conversation.
+- [x] Show explicit human approval before the rule enters the Playbook.
+- [x] Show the saved rule reused by Marketing, Operations, and an employee.
+- [x] Include speaker notes and a clickable live-demo handoff.
+- [x] Render and inspect all slides, then run overflow verification.
+
+**Verification:** Inspect artifact-tool and PowerPoint-compatible renders at full
+size, confirm three speaker-note pages, verify the live-demo hyperlink, and run
+the slide overflow test.
+
+**Rollback:** Remove only the alternate deck and this checkpoint. No application
+code, data, approved brand assets, or cloud resources are changed.
+
+**Verification results (2026-07-11):**
+
+```text
+Artifact-tool render: PASS (4/4 slides inspected at full size)
+PowerPoint-compatible render: PASS (4/4 slides inspected at full size)
+slides_test.py: PASS (no overflow detected)
+Speaker notes: PASS (notesSlide1 through notesSlide4 present)
+Live-demo hyperlink: PASS (Marketing URL embedded on slide 4)
+```
+
+## Active checkpoint: application visual identity adaptation
+
+**Outcome:** Bring the complete salon demo application into the approved
+`DESIGN.md` identity so the live product feels like the same confident system as
+the pitch: cobalt-led, editorial, warm, and visibly built around conversation
+fragments becoming trusted company knowledge.
+
+**Affected files:** `src/app/layout.tsx`, `src/app/globals.css`, visual components
+under `src/components/`, and lightweight loading/error presentation. Domain,
+service, repository, API, fixture, and AWS adapter behavior are out of scope.
+
+**Implementation steps:**
+
+- [x] Load Instrument Sans and Barlow Condensed through the App Router font API.
+- [x] Replace the legacy beige palette and generic rounded controls with the
+  approved cobalt, deep cobalt, coral, butter, ivory, and graphite tokens.
+- [x] Add the four-fragment company-memory mark and condensed wordmark to the
+  application shell.
+- [x] Restyle Home as a strong editorial workspace with a visible governed-memory
+  loop and a clear primary path into Marketing.
+- [x] Restyle Chat, suggested-knowledge approval, Review, and Playbook with a
+  consistent surface hierarchy and purposeful state colors.
+- [x] Preserve accessible labels, focus states, 44px touch targets, responsive
+  layouts, existing product copy required by tests, and all user flows.
+- [x] Run lint, typecheck, unit tests, production build, and E2E tests.
+- [x] Inspect desktop and mobile screenshots and record verification results.
+
+**Verification:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and
+`pnpm test:e2e`; then inspect Home, Chat, Review, and Playbook at desktop and
+mobile widths with no console errors or horizontal overflow.
+
+**Rollback:** Revert only this checkpoint's layout, global style, and visual
+component changes. No data model, persisted demo state, API contract, or cloud
+resource changes are involved.
+
+**Verification results (2026-07-11):**
+
+```text
+pnpm lint:       PASS (0 errors; 5 pre-existing AWS-adapter warnings)
+pnpm typecheck:  PASS
+pnpm test:       PASS (12 files, 30 tests)
+pnpm build:      PASS (Next.js 16.2.10 webpack production build)
+pnpm test:e2e:   PASS (2 tests, including the complete salon memory loop)
+Visual QA:       PASS (Home, Chat, Review, Playbook at 1440px and 390px)
+Overflow audit:  PASS (0 horizontal-overflow routes across 8 renders)
+Console audit:   PASS (0 production-render console errors)
+Approval card:   PASS (desktop render inspected; no content overflow)
+```
+
+The first sandboxed build could not reach Google Fonts. The same production build
+passed with normal network access and self-hosts the optimized font assets through
+Next.js at runtime.
+
+## Active checkpoint: statement-led landing page
+
+**Outcome:** Replace the app-like root dashboard with a public landing page that
+makes the product promise immediately clear, explains the governed-memory loop in
+plain language, and hands judges or prospective owners directly into the salon
+demo without changing the working Chat, Review, or Playbook flows.
+
+**Core statement:** “Explain it once. Your company remembers.” Supporting copy
+will explain that normal owner conversations become human-approved, source-backed
+company knowledge reused by employees and assistants.
+
+**Affected files:** the root page component, a new landing-page component, landing
+styles in `src/app/globals.css`, the root-aware application shell label, and tests
+that assert the first-screen message. Domain, API, adapter, and demo-state behavior
+are out of scope.
+
+**Implementation steps:**
+
+- [x] Build a full-bleed editorial hero with one clear salon-demo action.
+- [x] Explain the problem in owner language: repeated explanations, improvised
+  answers, and AI that forgets company context.
+- [x] Show the complete governed-memory loop from conversation through approval
+  to consistent action using the approved fragment metaphor.
+- [x] Make the trust boundary explicit: AI suggests, a human approves, and every
+  authoritative answer stays source-backed.
+- [x] End with the concrete salon proof rather than generic feature claims.
+- [x] Preserve responsive behavior, accessible navigation, reduced-motion support,
+  semantic headings, and 44px interaction targets.
+- [x] Update first-screen tests, run all required verification, and inspect desktop
+  and mobile production renders.
+
+**Verification:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and
+`pnpm test:e2e`; inspect the root page at 1440px and 390px with no horizontal
+overflow or production console errors.
+
+**Rollback:** Restore `src/app/page.tsx` to `HomeDashboard`, remove the new landing
+component and landing-only styles, and revert the corresponding test assertions.
+The salon demo data and product routes remain untouched.
+
+**Verification results (2026-07-11):**
+
+```text
+pnpm lint:       PASS
+pnpm typecheck:  PASS
+pnpm test:       PASS (14 files, 35 tests)
+pnpm build:      PASS (Next.js 16.2.10 webpack production build; 11 routes)
+pnpm test:e2e:   PASS (2 tests, including the complete salon memory loop)
+Visual QA:       PASS (1440px desktop and 390px mobile)
+Overflow audit:  PASS (no horizontal overflow)
+Console audit:   PASS (no page errors)
+```
+
+The design-html methodology influenced the implementation through real copy,
+poster-like first-screen composition, scan-first hierarchy, dynamic text flow, and
+mobile-specific re-layout. The live Next.js page remains the source of truth; no
+separate preview artifact or production dependency was introduced.
+
+## Active checkpoint: assistant-ui chat experience
+
+**Outcome:** Replace the hand-built chat transcript and composer with
+`@assistant-ui/react` primitives while preserving the existing MLC brand, REST
+contracts, role-specific workflows, governed-memory rules, and AWS boundaries.
+
+**Affected files:** `package.json`, `pnpm-lock.yaml`, chat UI components and
+UI-only adapters under `src/components/`, `src/app/globals.css`, focused component
+tests, `docs/DECISION_LOG.md`, and this plan. Domain, service, repository, prompt,
+and public API contracts are out of scope.
+
+**Implementation steps:**
+
+- [x] Add the pinned MIT-licensed `@assistant-ui/react@0.14.26` dependency.
+- [x] Add an external-store runtime adapter for MLC messages, sources, candidates,
+  drafts, running states, and existing role-specific submission handlers.
+- [x] Render the Marketing transcript with assistant-ui thread, message, composer,
+  auto-scroll, scroll-to-bottom, and accessible status primitives.
+- [x] Preserve independent Marketing, Operations, and Employee UI state while
+  switching assistants.
+- [x] Render suggested knowledge and approved sources as MLC-owned custom UI,
+  keeping approval outside model tool execution.
+- [x] Add focused component coverage for conversion, knowledge rendering,
+  keyboard submission, failures, and role-state preservation.
+- [x] Run lint, typecheck, unit tests, build, E2E, and inspect desktop/mobile Chat.
+
+**Verification:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and
+`pnpm test:e2e`, followed by browser network and responsive checks confirming no
+assistant-cloud traffic, no horizontal overflow, and no accessibility regressions.
+
+**Rollback:** Remove the assistant-ui dependency, UI-only adapter/primitives, and
+this checkpoint's chat/test/style edits. Restore the current hand-built chat
+component without changing any API, domain, persisted demo state, or AWS adapter.
+
+**Verification results (2026-07-11):**
+
+```text
+pnpm lint:       PASS (0 warnings)
+pnpm typecheck:  PASS
+pnpm test:       PASS (16 files, 42 tests)
+pnpm build:      PASS (Next.js 16.2.10, webpack)
+pnpm test:e2e:   PASS (2 Chromium tests, complete salon memory loop)
+git diff --check: PASS
+Network audit:   PASS (conversation traffic remained on MLC routes)
+Role state:      PASS (Marketing draft and inline candidate survived role switches)
+Responsive QA:   PASS (1440px and 390px; composer visible, no horizontal overflow)
+```
+
+True token streaming, searchable thread history, branching, attachments, voice,
+and model selection remain deferred. No assistant-cloud or alternate chat backend
+was configured.
+
+## Active checkpoint: directly editable Company Playbook
+
+**Outcome:** Make approved company memory visible and directly amendable in a
+document-like Playbook experience, while preserving owner approval, provenance,
+immutable version history, and truthful Knowledge Base indexing state.
+
+**Affected files:** Playbook detail UI, memory API/service/schema/port contracts,
+local and DynamoDB memory adapters, focused tests, E2E coverage, and the relevant
+product, UX, API, data-model, backlog, and decision documentation.
+
+**Implementation steps:**
+
+- [x] Add owner-only, stale-write-protected amendment of current approved memory.
+- [x] Persist each amendment as a new immutable approved version and audit event.
+- [x] Preserve prior sources and add the direct owner edit as a source reference.
+- [x] Re-render and re-index the new version, exposing pending, ready, and failed states.
+- [x] Return and display version history on the Playbook detail page.
+- [x] Add a calm document-style edit mode for title, rule, rationale, and role scope.
+- [x] Add service, local adapter, DynamoDB transaction, API, and browser coverage.
+- [x] Run lint, typecheck, unit tests, build, and E2E; record exact results.
+
+**Verification:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and
+`pnpm test:e2e`. The browser flow must edit an approved Playbook entry, show the
+new version, preserve the former version in history, and use the amended rule in
+a later assistant answer.
+
+**Rollback:** Revert only this checkpoint's Playbook amendment API, repository
+version-write methods, UI, tests, and documentation. Existing approved records
+and the conversation-to-approval flow remain unchanged.
+
+**Verification results (2026-07-11):**
+
+```text
+pnpm lint:       PASS (0 warnings)
+pnpm typecheck:  PASS
+pnpm test:       PASS (16 files, 42 tests)
+pnpm build:      PASS (Next.js 16.2.10, webpack)
+pnpm test:e2e:   PASS (2 Chromium tests; amendment and version reuse included)
+git diff --check: PASS
+Visual QA:       PASS (Playbook detail at 1440px and 390px)
+```
+
+The browser scenario approves the 15% salon rule, edits it directly to 10%,
+confirms version 1 remains visible, and verifies the Employee assistant cites and
+uses version 2. The first sandboxed E2E attempt could not bind port 3000; the same
+command passed with the local browser server allowed outside the sandbox.
+
+## Completed checkpoint: Cognito login and scoped knowledge access
+
+**Outcome:** Add real Cognito managed login and a server-owned authorization
+model where the owner has full access and other company members receive explicit
+`READ`, `SUGGEST`, and `APPROVE` grants for the whole company or one department.
+
+**Affected files:** Authentication/session composition, membership and identity
+ports/adapters, domain authorization, application services and API routes, the
+workspace access UI, demo fixtures, focused tests and E2E coverage, environment
+configuration, AWS setup scripts, and the relevant product/security/architecture
+documentation.
+
+**Implementation steps:**
+
+- [x] Add Auth.js Cognito managed login plus a seeded demo-account provider.
+- [x] Resolve every request actor from the authenticated identity and current
+  active membership; never trust browser-supplied company, role, or grant data.
+- [x] Add membership persistence, Cognito invitation administration, and an
+  owner-only People & access experience.
+- [x] Centralize company/department permission evaluation and enforce it across
+  memory, candidate, conversation, assistant, company, and demo-reset flows.
+- [x] Separate assistant content targeting from human access authorization.
+- [x] Add representative owner, contributor, approver, and read-only demo users.
+- [x] Add Cognito bootstrap/configuration guidance, audit access changes, and
+  update the canonical decision and security documentation.
+- [x] Run lint, typecheck, unit tests, production build, and full E2E verification.
+
+**Verification:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and
+`pnpm test:e2e`. Focused coverage must prove company/department grant semantics,
+approval-implies-read, confidential owner-only behavior, disabled membership,
+conversation isolation, safe invitation retry, and immediate grant revocation.
+
+**Rollback:** Remove the Auth.js/Cognito and membership additions, restore the
+seeded server actors in route handlers, and revert permission-aware UI changes.
+No destructive data migration is required; existing company, conversation, and
+memory records remain valid.
+
+**Verification results (2026-07-11):**
+
+```text
+pnpm lint:       PASS (0 warnings)
+pnpm typecheck:  PASS
+pnpm test:       PASS (22 files, 71 tests)
+pnpm build:      PASS (Next.js 16.2.10 webpack; auth/access routes included)
+pnpm test:e2e:   PASS (4 Chromium tests)
+git diff --check: PASS
+```
+
+The browser suite signs in as Maya, Minh, An, and Lina; verifies navigation and
+owner administration; asserts a contributor receives 403 for Review; and then
+re-runs the complete approval, retrieval, amendment, department-page, desktop,
+and mobile salon paths. The first sandboxed E2E attempt could not bind port 3000;
+the approved local browser run passed.
+
+## Active checkpoint: consolidated decision documentation
+
+**Outcome:** Make `docs/DECISION_LOG.md` the easy-to-scan canonical record of all
+accepted product, trust, UX, architecture, visual, deployment, and scope decisions.
+
+**Affected files:** `docs/DECISION_LOG.md`, `docs/PROJECT_MEMORY.md`,
+`docs/UX_SPEC.md`, `DESIGN.md`, `README.md`, and this plan only. No application
+behavior changes.
+
+**Implementation steps:**
+
+- [x] Add a dated decision index mapping every detailed ADR by area.
+- [x] Record missing accepted decisions for the visual identity, public landing
+  narrative, and Netlify-hosted/AWS-backed deployment boundary.
+- [x] Record exact route ownership, landing-story sequence, direct Marketing
+  handoff, and the `/workspace` location of demo profile and reset controls.
+- [x] Record semantic color roles, fragment-mark usage, typography, layout, and
+  motion constraints in the canonical ADR and `DESIGN.md`.
+- [x] Record the console-first AWS Region, model, embedding, and vector-store
+  defaults without hardcoding them into domain logic.
+- [x] Add a concise scope and current-limitation section so deferred work is not
+  mistaken for an accepted implementation commitment.
+- [x] Link the canonical decision record from the repository map and durable
+  project memory.
+- [x] Align the UX specification with the public Home and demo-workspace split.
+- [x] Verify numbering, cross-references, and formatting.
+
+**Verification:** Review every existing ADR, `PROJECT_MEMORY` current decisions,
+`DESIGN.md`, active plan commitments, and deployment docs against the consolidated
+index; run `git diff --check`.
+
+**Rollback:** Revert only the documentation additions in this checkpoint.
+
+**Verification results (2026-07-11):**
+
+```text
+ADR index/detail parity: PASS (ADR-001 through ADR-023)
+Experience route map: PASS (/, /workspace, /chat, /review, /playbook)
+Landing narrative record: PASS (promise → problem → loop → trust → proof → demo)
+Visual semantics record: PASS (cobalt anchors, butter suggests, coral confirms)
+README/Project Memory links: PASS
+git diff --check: PASS
+```

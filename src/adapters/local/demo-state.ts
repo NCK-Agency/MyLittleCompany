@@ -5,24 +5,43 @@ import { tmpdir } from "node:os";
 import type {
   AuditEvent,
   Company,
+  CompanyMembership,
   Conversation,
   HydratedMemory,
   MemoryCandidate,
+  MemoryVersion,
   Message,
+  ImportBatch,
+  ImportedItem,
+  OnboardingSession,
+  StoredImportedSource,
   SourceReference,
 } from "@/domain/types";
-import { memoryRecordSchema, memoryVersionSchema } from "@/domain/schemas";
+import {
+  candidateSchema,
+  companySchema,
+  conversationSchema,
+  memoryRecordSchema,
+  memoryVersionSchema,
+  companyMembershipSchema,
+} from "@/domain/schemas";
 
 export interface DemoState {
   company: Company;
+  memberships: CompanyMembership[];
   conversations: Conversation[];
   messages: Message[];
   messageIdempotency: Map<string, string>;
   candidates: MemoryCandidate[];
   memories: HydratedMemory[];
+  memoryVersions: MemoryVersion[];
   indexedMemoryIds: Set<string>;
   sources: SourceReference[];
   auditEvents: AuditEvent[];
+  onboardingSessions: OnboardingSession[];
+  importBatches: ImportBatch[];
+  importedItems: ImportedItem[];
+  importedSources: StoredImportedSource[];
 }
 
 export function createDemoState(): DemoState {
@@ -34,6 +53,7 @@ export function createDemoState(): DemoState {
       status: item.status,
       currentVersion: item.currentVersion,
       title: item.title,
+      scope: item.scope,
       appliesToRoles: item.appliesToRoles,
       sensitivity: item.sensitivity,
       tags: item.tags,
@@ -47,22 +67,29 @@ export function createDemoState(): DemoState {
 
   return {
     company: structuredClone(demoFixture.company) as Company,
+    memberships: demoFixture.memberships.map((membership) => companyMembershipSchema.parse(membership)),
     conversations: [],
     messages: [],
     messageIdempotency: new Map(),
     candidates: [],
     memories,
+    memoryVersions: memories.map((memory) => memory.version),
     indexedMemoryIds: new Set(memories.map((memory) => memory.record.id)),
     sources: [{ sourceId: "source-demo-profile", label: "Demo company profile" }],
     auditEvents: [],
+    onboardingSessions: [],
+    importBatches: [],
+    importedItems: [],
+    importedSources: [],
   };
 }
 
 const globalState = globalThis as typeof globalThis & { __mlcDemoState?: DemoState };
 
-interface SerializedDemoState extends Omit<DemoState, "messageIdempotency" | "indexedMemoryIds"> {
+interface SerializedDemoState extends Omit<DemoState, "messageIdempotency" | "indexedMemoryIds" | "memoryVersions"> {
   messageIdempotency: Array<[string, string]>;
   indexedMemoryIds: string[];
+  memoryVersions?: MemoryVersion[];
 }
 
 function statePath(): string {
@@ -80,10 +107,30 @@ function serialize(state: DemoState): SerializedDemoState {
 }
 
 function hydrate(state: SerializedDemoState): DemoState {
+  const company = companySchema.parse({
+    ...state.company,
+    organizationalUnits: state.company.organizationalUnits ?? demoFixture.company.organizationalUnits,
+  });
+  const memories = state.memories.map((memory) => ({
+    record: memoryRecordSchema.parse(memory.record),
+    version: memoryVersionSchema.parse(memory.version),
+  }));
   return {
     ...state,
+    company,
+    memberships: (state.memberships ?? demoFixture.memberships)
+      .map((membership) => companyMembershipSchema.parse(membership)),
+    conversations: state.conversations.map((conversation) => conversationSchema.parse(conversation)),
+    candidates: state.candidates.map((candidate) => candidateSchema.parse(candidate)),
+    memories,
+    memoryVersions: (state.memoryVersions ?? memories.map((memory) => memory.version))
+      .map((version) => memoryVersionSchema.parse(version)),
     messageIdempotency: new Map(state.messageIdempotency),
     indexedMemoryIds: new Set(state.indexedMemoryIds),
+    onboardingSessions: state.onboardingSessions ?? [],
+    importBatches: state.importBatches ?? [],
+    importedItems: state.importedItems ?? [],
+    importedSources: state.importedSources ?? [],
   };
 }
 

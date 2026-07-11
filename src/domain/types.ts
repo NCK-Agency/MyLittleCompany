@@ -26,11 +26,68 @@ export type ConflictRelation =
   | "CONTRADICTION"
   | "EXCEPTION";
 export type Sensitivity = "PUBLIC" | "INTERNAL" | "CONFIDENTIAL";
+export type OrganizationalUnitType = "COMPANY" | "DEPARTMENT";
+export type KnowledgePermission = "READ" | "SUGGEST" | "APPROVE";
+export type IdentityProvider = "DEMO" | "COGNITO";
+export type MembershipStatus = "INVITED" | "ACTIVE" | "DISABLED";
+export type SourceKind = "CONVERSATION" | "WEBSITE" | "DOCUMENT" | "MANUAL";
+export type ImportProvider = "PASTE" | "CHATGPT" | "WHATSAPP" | "GOOGLE_DRIVE" | "UPLOAD";
+export type OnboardingState =
+  | "GOAL"
+  | "SOURCE"
+  | "PROCESSING"
+  | "REVIEWING"
+  | "PROVING"
+  | "COMPLETED"
+  | "SKIPPED";
+export type ImportBatchState = "DRAFT" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
+export type ImportStage = "NORMALIZE" | "EXTRACT" | "CLASSIFY" | "FINALIZE";
+export type ImportedItemState = "QUEUED" | "PARSING" | "READY" | "FAILED" | "CANCELLED";
+export type RawContentStatus = "ACTIVE" | "DELETED" | "REDACTED";
+export type SourceRetention = "UNAPPROVED_30_DAYS" | "ZERO_CANDIDATE_24_HOURS" | "ALL_IGNORED_7_DAYS" | "APPROVED" | "DELETED";
+
+export interface KnowledgeScope {
+  level: OrganizationalUnitType;
+  organizationalUnitId?: string;
+}
+
+export interface AccessGrant {
+  permission: KnowledgePermission;
+  scope: KnowledgeScope;
+}
+
+export interface CompanyMembership {
+  companyId: string;
+  userId: string;
+  email: string;
+  displayName: string;
+  identityProvider: IdentityProvider;
+  identitySubject: string;
+  roles: CompanyRole[];
+  grants: AccessGrant[];
+  status: MembershipStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrganizationalUnit {
+  id: string;
+  companyId: string;
+  parentId: string | null;
+  type: OrganizationalUnitType;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface ActorContext {
   userId: string;
   companyId: string;
+  email: string;
+  displayName: string;
   roles: CompanyRole[];
+  grants: AccessGrant[];
+  organizationalUnitIds?: string[];
   demoMode: boolean;
 }
 
@@ -42,6 +99,7 @@ export interface Company {
   primaryCustomers: string[];
   differentiators: string[];
   brandVoice: string[];
+  organizationalUnits: OrganizationalUnit[];
   timezone: string;
   createdAt: string;
   updatedAt: string;
@@ -54,11 +112,89 @@ export interface SourceReference {
   excerpt?: string;
 }
 
+export interface ImportedSource {
+  id: string;
+  companyId: string;
+  kind: SourceKind;
+  provider: ImportProvider;
+  title: string;
+  externalId?: string;
+  checksum: string;
+  storageKey?: string;
+  contentStatus: RawContentStatus;
+  retention: SourceRetention;
+  deleteAfter?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoredImportedSource {
+  source: ImportedSource;
+  content: string | null;
+}
+
+export interface OnboardingSession {
+  id: string;
+  version: number;
+  companyId: string;
+  createdBy: string;
+  proofQuestion: string;
+  state: OnboardingState;
+  activeBatchId?: string;
+  prioritizedCandidateIds: string[];
+  approvedMemoryIds: string[];
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+export interface ImportBatch {
+  id: string;
+  version: number;
+  companyId: string;
+  sessionId: string;
+  createdBy: string;
+  provider: ImportProvider;
+  state: ImportBatchState;
+  stage: ImportStage;
+  idempotencyKey: string;
+  checksum: string;
+  itemIds: string[];
+  candidateIds: string[];
+  readyItemCount: number;
+  failedItemCount: number;
+  leaseOwner?: string;
+  leaseExpiresAt?: string;
+  errorCode?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ImportedItem {
+  id: string;
+  companyId: string;
+  batchId: string;
+  sourceId: string;
+  kind: SourceKind;
+  provider: ImportProvider;
+  title: string;
+  externalId?: string;
+  checksum: string;
+  contentLength: number;
+  state: ImportedItemState;
+  errorCode?: string;
+  deleteAfter?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Conversation {
   id: string;
   companyId: string;
   title: string;
   assistantRole: AssistantRole;
+  scope: KnowledgeScope;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -80,6 +216,7 @@ export interface MemoryCandidate {
   version: number;
   companyId: string;
   conversationId?: string;
+  scope: KnowledgeScope;
   type: MemoryType;
   title: string;
   statement: string;
@@ -109,6 +246,7 @@ export interface MemoryRecord {
   status: MemoryStatus;
   currentVersion: number;
   title: string;
+  scope: KnowledgeScope;
   appliesToRoles: CompanyRole[];
   sensitivity: Sensitivity;
   tags: string[];
@@ -125,6 +263,7 @@ export interface MemoryVersion {
   companyId: string;
   version: number;
   title: string;
+  scope: KnowledgeScope;
   statement: string;
   rationale: string | null;
   appliesToRoles: CompanyRole[];
@@ -141,6 +280,10 @@ export interface MemoryVersion {
 export interface HydratedMemory {
   record: MemoryRecord;
   version: MemoryVersion;
+}
+
+export interface MemoryDetail extends HydratedMemory {
+  history: MemoryVersion[];
 }
 
 export interface SopDraft {
@@ -178,4 +321,34 @@ export interface GroundedAnswer {
     title: string;
     approvedAt: string;
   }>;
+}
+
+export interface KnowledgeIndexHit {
+  memoryId: string;
+  version: number;
+  score?: number;
+  metadata: {
+    companyId: string;
+    status: string;
+    roleScopes: string[];
+    sensitivity: string;
+  };
+}
+
+export interface CanonicalMemoryDocument {
+  companyId: string;
+  memoryId: string;
+  version: number;
+  key: string;
+  uri: string;
+  checksum: string;
+}
+
+export interface ModelOperationMetadata {
+  modelId: string;
+  promptVersion: string;
+  latencyMs: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  providerRequestId?: string;
 }

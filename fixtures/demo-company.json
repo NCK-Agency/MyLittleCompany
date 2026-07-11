@@ -26,6 +26,44 @@
       "Helpful",
       "Never pushy"
     ],
+    "organizationalUnits": [
+      {
+        "id": "unit-company",
+        "companyId": "demo-salon",
+        "parentId": null,
+        "type": "COMPANY",
+        "name": "Maison Lumière Salon",
+        "createdAt": "2026-07-11T00:00:00.000Z",
+        "updatedAt": "2026-07-11T00:00:00.000Z"
+      },
+      {
+        "id": "unit-marketing",
+        "companyId": "demo-salon",
+        "parentId": "unit-company",
+        "type": "DEPARTMENT",
+        "name": "Marketing",
+        "createdAt": "2026-07-11T00:00:00.000Z",
+        "updatedAt": "2026-07-11T00:00:00.000Z"
+      },
+      {
+        "id": "unit-operations",
+        "companyId": "demo-salon",
+        "parentId": "unit-company",
+        "type": "DEPARTMENT",
+        "name": "Operations",
+        "createdAt": "2026-07-11T00:00:00.000Z",
+        "updatedAt": "2026-07-11T00:00:00.000Z"
+      },
+      {
+        "id": "unit-front-desk",
+        "companyId": "demo-salon",
+        "parentId": "unit-company",
+        "type": "DEPARTMENT",
+        "name": "Front Desk",
+        "createdAt": "2026-07-11T00:00:00.000Z",
+        "updatedAt": "2026-07-11T00:00:00.000Z"
+      }
+    ],
     "timezone": "Asia/Ho_Chi_Minh",
     "createdAt": "2026-07-11T00:00:00.000Z",
     "updatedAt": "2026-07-11T00:00:00.000Z"
@@ -34,9 +72,48 @@
     {
       "companyId": "demo-salon",
       "userId": "user-owner-demo",
+      "email": "maya@example.com",
       "displayName": "Maya",
+      "identityProvider": "DEMO",
+      "identitySubject": "user-owner-demo",
       "roles": [
         "OWNER"
+      ],
+      "grants": [],
+      "status": "ACTIVE",
+      "createdAt": "2026-07-11T00:00:00.000Z",
+      "updatedAt": "2026-07-11T00:00:00.000Z"
+    },
+    {
+      "companyId": "demo-salon",
+      "userId": "user-marketing-demo",
+      "email": "minh@example.com",
+      "displayName": "Minh",
+      "identityProvider": "DEMO",
+      "identitySubject": "user-marketing-demo",
+      "roles": [
+        "MARKETING"
+      ],
+      "grants": [
+        { "permission": "READ", "scope": { "level": "DEPARTMENT", "organizationalUnitId": "unit-marketing" } },
+        { "permission": "SUGGEST", "scope": { "level": "DEPARTMENT", "organizationalUnitId": "unit-marketing" } }
+      ],
+      "status": "ACTIVE",
+      "createdAt": "2026-07-11T00:00:00.000Z",
+      "updatedAt": "2026-07-11T00:00:00.000Z"
+    },
+    {
+      "companyId": "demo-salon",
+      "userId": "user-operations-demo",
+      "email": "an@example.com",
+      "displayName": "An",
+      "identityProvider": "DEMO",
+      "identitySubject": "user-operations-demo",
+      "roles": [
+        "OPERATIONS"
+      ],
+      "grants": [
+        { "permission": "APPROVE", "scope": { "level": "DEPARTMENT", "organizationalUnitId": "unit-operations" } }
       ],
       "status": "ACTIVE",
       "createdAt": "2026-07-11T00:00:00.000Z",
@@ -45,10 +122,16 @@
     {
       "companyId": "demo-salon",
       "userId": "user-employee-demo",
+      "email": "lina@example.com",
       "displayName": "Lina",
+      "identityProvider": "DEMO",
+      "identitySubject": "user-employee-demo",
       "roles": [
         "EMPLOYEE",
         "FRONT_DESK"
+      ],
+      "grants": [
+        { "permission": "READ", "scope": { "level": "DEPARTMENT", "organizationalUnitId": "unit-front-desk" } }
       ],
       "status": "ACTIVE",
       "createdAt": "2026-07-11T00:00:00.000Z",
@@ -63,6 +146,7 @@
       "status": "APPROVED",
       "currentVersion": 1,
       "title": "Use a warm premium voice",
+      "scope": { "level": "COMPANY" },
       "appliesToRoles": [
         "OWNER",
         "MARKETING",
@@ -84,6 +168,7 @@
         "companyId": "demo-salon",
         "version": 1,
         "title": "Use a warm premium voice",
+        "scope": { "level": "COMPANY" },
         "statement": "Customer communication should feel warm, confident, refined, helpful, and never pushy.",
         "rationale": "The salon should feel premium without making customers feel pressured or unwelcome.",
         "appliesToRoles": [
@@ -117,6 +202,7 @@
       "status": "APPROVED",
       "currentVersion": 1,
       "title": "Primary customers value convenience and personal service",
+      "scope": { "level": "COMPANY" },
       "appliesToRoles": [
         "OWNER",
         "MARKETING",
@@ -137,6 +223,7 @@
         "companyId": "demo-salon",
         "version": 1,
         "title": "Primary customers value convenience and personal service",
+        "scope": { "level": "COMPANY" },
         "statement": "The salon primarily serves busy local professionals and clients who value consistent personal attention.",
         "rationale": "Campaigns and procedures should respect limited customer time while preserving a personal experience.",
         "appliesToRoles": [

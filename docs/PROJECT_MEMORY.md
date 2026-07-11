@@ -2,7 +2,7 @@
 
 **Status:** Current product context  
 **Product name:** My Little Company  
-**Short name:** MLC  
+**Internal short name:** MLC
 **Tagline:** Explain it once. Your company remembers.
 
 This document is the durable context for the project. Update it when the product direction changes. Do not use it as a day-to-day task checklist; use `PLANS.md` and `docs/BACKLOG.md` for execution.
@@ -179,6 +179,9 @@ Only approved memory may be used as authoritative company context.
 
 ## 11. Current product decisions
 
+The canonical, dated record is `docs/DECISION_LOG.md`. This section is a compact
+product-only view; when a decision changes, add or supersede an ADR there first.
+
 - Primary hackathon track: Organizational AI Memory.
 - Secondary track: AWS AI/ML.
 - The agent-workforce concept supports the story but is not the primary product.
@@ -186,12 +189,56 @@ Only approved memory may be used as authoritative company context.
 - An Employee Q&A mode demonstrates human reuse.
 - Human approval is mandatory before a memory becomes authoritative.
 - The app is chat-first but not chat-only; Review and Playbook are first-class.
+- The public root route leads with “Explain it once. Your company remembers.” and
+  tells the story in this order: problem, governed-memory loop, trust boundary,
+  salon proof, and live demo action.
+- The primary landing action opens the Marketing salon conversation directly.
+  Demo-company profile, recent-knowledge, and reset controls live at `/workspace`.
+- The approved visual system is kinetic editorial utility: cobalt anchors, butter
+  suggests, coral confirms, and the four-fragment mark represents approved memory.
+- The Company Playbook is an editable workspace, not a read-only audit screen. An owner may directly amend approved knowledge; each save creates a new approved, source-backed version and refreshes assistant retrieval.
+- Company and department knowledge live in one governed Playbook. Company pages
+  are inherited; department pages remain department-scoped; role applicability
+  and sensitivity are enforced separately.
+- The app workspace uses persistent, reopenable conversations. `/save-knowledge`
+  opens an owner confirmation form and can create a source-backed approved page
+  from verified conversation messages.
+- The Playbook offers five business-language topic views over the seven canonical
+  memory types. They do not create folders or a second taxonomy.
+- Chat can open a contextual panel showing approved sources used, eligible recent
+  knowledge, and suggestions awaiting an owner decision. Operations always uses
+  the owner's actual request as the SOP goal.
+- Knowledge ownership, review dates, freshness automation, relationship graphs,
+  and portable export remain deferred until the core conflict and AWS paths are
+  complete.
+- Cognito proves deployed user identity, while active company memberships remain
+  the source of authorization truth. Owners have full access; other users receive
+  independent company/department `READ`, `SUGGEST`, and `APPROVE` grants that are
+  reloaded on every request. Demo mode uses Maya, Minh, An, and Lina to exercise
+  owner, contributor, approver, and read-only behavior.
+- ChatGPT, Codex, Claude Code, Gemini CLI, Kiro, and other compatible clients may
+  connect through the remote tool-only MCP endpoint. The
+  OAuth bridge records consent but never grants company access; every tool call
+  reloads the membership. Connected assistants may retrieve approved knowledge
+  or create Review suggestions, never approve company truth.
+- Signed-in owners onboard through one proof-first loop: choose a real question,
+  paste text or select one ChatGPT conversation locally, approve suggested company
+  knowledge, and receive a cited answer from that import. Search indexing remains
+  a separate visible state; imported context never creates folders or silently
+  changes the Company profile.
 - AWS Bedrock and Bedrock Knowledge Bases are core, not incidental hosting.
+- Production data uses pooled AWS resources with company-prefixed DynamoDB child
+  partitions, company-prefixed S3 objects, mandatory Knowledge Base company
+  metadata, and structured hydration that fails closed before model use.
+- The hackathon AWS foundation is console-first in `us-east-1`, with Nova Lite,
+  Titan Text Embeddings V2, and S3 Vectors as configurable demo defaults.
 - Local adapters must keep development unblocked.
 - Website onboarding through Apify is optional after the memory loop works.
 - Voice onboarding through Agora is a stretch feature.
 - Notion is an optional import/export destination, not the source of truth.
 - Observability should use one primary approach at a time: Langfuse or AWS-native tracing.
+- Customer- and judge-facing copy uses “My Little Company.” Reserve “MLC” for
+  internal code, technical identifiers, and backlog ticket IDs.
 
 ## 12. Non-goals
 

@@ -1,13 +1,16 @@
 import { apiError, ok } from "@/server/api-response";
-import { ownerActor } from "@/server/actors";
-import { memoryService } from "@/server/container";
+import { requireActor } from "@/server/auth-context";
+import { memoryService, onboardingService } from "@/server/container";
 
 interface Context { params: Promise<{ candidateId: string }> }
 
 export async function POST(_request: Request, context: Context): Promise<Response> {
   try {
     const { candidateId } = await context.params;
-    return ok(await memoryService.rejectCandidate(candidateId, ownerActor()));
+    const actor = await requireActor();
+    const candidate = await memoryService.rejectCandidate(candidateId, actor);
+    await onboardingService.candidateRejected(candidate, actor);
+    return ok(candidate);
   } catch (error) {
     return apiError(error);
   }

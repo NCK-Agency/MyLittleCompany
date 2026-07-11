@@ -150,7 +150,7 @@ Status values: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - Verifies source and 15% rule.
 - Passes repeatedly without external services.
 
-### MLC-013 Bedrock model adapter — TODO
+### MLC-013 Bedrock model adapter — DONE
 
 **Depends on:** MLC-003, MLC-012
 
@@ -163,19 +163,21 @@ Status values: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - Timeouts and safe errors exist.
 - Local adapter still works.
 
-### MLC-014 DynamoDB and S3 adapters — TODO
+### MLC-014 DynamoDB and S3 adapters — IN_PROGRESS
 
 **Depends on:** MLC-003, MLC-008
 
 **Acceptance criteria:**
 
 - Required access patterns implemented without runtime scans.
+- Messages and memory versions use company-prefixed child partitions; tests prove
+  identical IDs in different companies cannot collide.
 - Conditional approval prevents double writes.
 - Versions are immutable.
 - S3 objects are private and company-prefixed.
 - Audit events exist for approval and index changes.
 
-### MLC-015 Bedrock Knowledge Base adapter — TODO
+### MLC-015 Bedrock Knowledge Base adapter — IN_PROGRESS
 
 **Depends on:** MLC-013, MLC-014
 
@@ -184,10 +186,11 @@ Status values: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - Approved version rendered deterministically.
 - Direct ingestion uses stable document ID.
 - Metadata includes company, memory, version, roles, type, status, and sensitivity where supported.
+- Missing, malformed, or cross-company index metadata fails closed before hydration.
 - Retrieval hits are hydrated and revalidated from DynamoDB.
 - Index state supports pending, ready, failed, and retry.
 
-### MLC-016 AWS smoke test — TODO
+### MLC-016 AWS smoke test — BLOCKED
 
 **Depends on:** MLC-015
 
@@ -198,6 +201,11 @@ Status values: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - Retrieves it with expected company scope.
 - Cleans up disposable data where safe.
 - Documentation explains required AWS resources and IAM actions.
+
+**Blocker:** The executable smoke path is implemented, but no AWS resources or
+runtime credentials are available in the repository environment. Do not mark this
+ticket DONE until `pnpm smoke:aws` and `pnpm test:e2e:aws` pass against the
+provisioned account.
 
 ### MLC-017 Conflict detection — TODO
 
@@ -266,12 +274,78 @@ Status values: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - Clear current version.
 - Source and approver per version.
 
+### MLC-106 Direct Playbook amendment — DONE
+
+- Owner edits current approved knowledge from the Playbook detail page.
+- Each save creates an immutable approved version with stale-write protection.
+- Prior sources remain attached and the direct owner edit is source-backed.
+- Version history and assistant-search status are visible.
+- The new version is rendered and re-indexed with a retryable failure state.
+
+### MLC-107 Scoped knowledge workspace and persistent chat — DONE
+
+- Conversations persist in a ChatGPT-style history and reopen with their messages.
+- Each conversation uses a stable company or department knowledge scope.
+- `/save-knowledge` opens an owner confirmation form and never grants approval to
+  the model.
+- Owners can create source-backed pages directly in a company/department Playbook
+  tree.
+- Company knowledge is inherited; department knowledge remains department-only,
+  with role, sensitivity, approval, and indexing checks still enforced.
+- Desktop and mobile flows are covered by the salon E2E path.
+
+### MLC-108 Conversational knowledge context — DONE
+
+- Playbook pages can be viewed through five business-language topic groups without
+  changing the canonical seven memory types.
+- Chat exposes the approved sources used, recent knowledge eligible for the
+  conversation scope, and suggestions awaiting review.
+- Operations generation receives and follows the owner's actual request.
+- Company/department scope and the approved memory record remain canonical.
+
+### MLC-109 Knowledge ownership and freshness — TODO
+
+- Assign an accountable knowledge owner.
+- Add an optional review date or cadence.
+- Derive plain-language Current, Review due, and Outdated states.
+- Do not automatically change or archive company truth.
+
+### MLC-110 Cognito login and scoped knowledge access — DONE
+
+- Cognito managed login and Auth.js secure sessions establish identity.
+- Current memberships grant independent company/department read, suggest, and
+  approval access; owner remains unrestricted.
+- People & access supports owner invitations, grant changes, pause/restore, and
+  auditable access events.
+- Demo personas and automated coverage prove contributor, approver, read-only,
+  conversation-isolation, and confidential-owner-only behavior.
+
+### MLC-111 Client-neutral MCP connection — DONE
+
+- OAuth discovery, dynamic client registration, PKCE, audience binding, refresh
+  rotation, revocation, and membership reload protect the connector.
+- Standard `search` and `fetch` expose eligible approved knowledge with canonical
+  Playbook URLs; a separate idempotent tool creates reviewable suggestions.
+- No external client can approve knowledge or turn OAuth consent into an
+  application grant.
+- Conflict Review creates versions or conditioned exceptions instead of silently
+  duplicating or replacing current knowledge.
+
+### MLC-112 Proof-first company onboarding — DONE
+
+- Owner chooses one proof question, imports pasted text or one selected ChatGPT conversation, and reviews up to three prioritized suggestions.
+- ChatGPT account history is parsed locally; only the selected active conversation branch is uploaded and quick setup is capped at 40,000 characters.
+- Leased, resumable processing creates no company truth automatically and remains idempotent under retries and cancellation.
+- Completion requires a cited answer from knowledge approved from that import, while indexing status remains separately visible.
+- Raw imported content follows 24-hour, seven-day, 30-day, approved-retention, and owner-tombstone rules.
+- Local and AWS repositories, browser coverage, parser/security coverage, and the existing approval/index path are shared rather than duplicated.
+
 ## P2 — Stretch or post-hackathon
 
 ### MLC-201 Notion import/export — TODO
 ### MLC-202 Agora voice onboarding — TODO
-### MLC-203 Manager approval scopes — TODO
+### MLC-203 Manager approval scopes — DONE via MLC-110 explicit grants
 ### MLC-204 Company knowledge analytics — TODO
 ### MLC-205 Additional assistants — TODO
-### MLC-206 Production authentication with Cognito — TODO
+### MLC-206 Production authentication with Cognito — DONE via MLC-110
 ### MLC-207 Multi-company administration and billing — TODO

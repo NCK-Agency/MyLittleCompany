@@ -1,28 +1,20 @@
-import { getDemoState, saveDemoState } from "@/adapters/local/demo-state";
 import { apiError, ok } from "@/server/api-response";
-import { ownerActor } from "@/server/actors";
-import { z } from "zod";
+import { requireActor } from "@/server/auth-context";
+import { companyService } from "@/server/container";
 
 export const dynamic = "force-dynamic";
 
-const updateCompanySchema = z.object({
-  name: z.string().min(2).max(120),
-  description: z.string().min(10).max(1000),
-});
-
 export async function GET(): Promise<Response> {
-  return ok(getDemoState().company);
+  try {
+    return ok(await companyService.get(await requireActor()));
+  } catch (error) {
+    return apiError(error);
+  }
 }
 
 export async function PATCH(request: Request): Promise<Response> {
   try {
-    const actor = ownerActor();
-    const values = updateCompanySchema.parse(await request.json());
-    const state = getDemoState();
-    if (state.company.id !== actor.companyId) throw new Error("NOT_FOUND");
-    state.company = { ...state.company, ...values, updatedAt: new Date().toISOString() };
-    saveDemoState(state);
-    return ok(state.company);
+    return ok(await companyService.update(await request.json(), await requireActor()));
   } catch (error) {
     return apiError(error);
   }

@@ -1,6 +1,15 @@
-import type { ActorContext, HydratedMemory } from "@/domain/types";
+import type {
+  ActorContext,
+  CanonicalMemoryDocument,
+  CompanyRole,
+  HydratedMemory,
+  KnowledgeIndexHit,
+} from "@/domain/types";
 
 export interface KnowledgeIndex {
-  upsert(memory: HydratedMemory): Promise<{ documentId: string }>;
-  retrieve(query: string, actor: ActorContext): Promise<HydratedMemory[]>;
+  upsert(
+    memory: HydratedMemory,
+    document: CanonicalMemoryDocument,
+  ): Promise<{ documentId: string }>;
+  retrieve(query: string, actor: ActorContext, requestedRoles?: CompanyRole[]): Promise<KnowledgeIndexHit[]>;
 }

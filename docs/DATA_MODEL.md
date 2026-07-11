@@ -16,6 +16,7 @@ Use opaque string IDs. Branded TypeScript types are encouraged.
 
 ```ts
 type CompanyId = string & { readonly __brand: "CompanyId" };
+type OrganizationalUnitId = string & { readonly __brand: "OrganizationalUnitId" };
 type UserId = string & { readonly __brand: "UserId" };
 type ConversationId = string & { readonly __brand: "ConversationId" };
 type MessageId = string & { readonly __brand: "MessageId" };
@@ -103,6 +104,20 @@ type Sensitivity = "PUBLIC" | "INTERNAL" | "CONFIDENTIAL";
 
 The MVP should not store secrets as memory at any sensitivity level.
 
+### Organizational scope
+
+```ts
+type OrganizationalUnitType = "COMPANY" | "DEPARTMENT";
+
+interface KnowledgeScope {
+  level: OrganizationalUnitType;
+  organizationalUnitId?: OrganizationalUnitId;
+}
+```
+
+`organizationalUnitId` is required for department scope and omitted for company
+scope. The referenced unit must belong to the same company as the entity.
+
 ## 4. Core entities
 
 ### 4.1 Company
@@ -116,7 +131,18 @@ interface Company {
   primaryCustomers: string[];
   differentiators: string[];
   brandVoice: string[];
+  organizationalUnits: OrganizationalUnit[];
   timezone: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface OrganizationalUnit {
+  id: OrganizationalUnitId;
+  companyId: CompanyId;
+  parentId: OrganizationalUnitId | null;
+  type: "COMPANY" | "DEPARTMENT";
+  name: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -128,15 +154,23 @@ interface Company {
 interface CompanyMembership {
   companyId: CompanyId;
   userId: UserId;
+  email: string;
   displayName: string;
+  identityProvider: "DEMO" | "COGNITO";
+  identitySubject: string;
   roles: CompanyRole[];
-  status: "ACTIVE" | "DISABLED";
+  grants: Array<{
+    permission: "READ" | "SUGGEST" | "APPROVE";
+    scope: KnowledgeScope;
+  }>;
+  status: "INVITED" | "ACTIVE" | "DISABLED";
   createdAt: string;
   updatedAt: string;
 }
 ```
 
-The demo may seed fixed memberships.
+`roles` describe who knowledge applies to; grants authorize human actions. Owner
+membership is the only implicit full-access role. The demo seeds fixed memberships.
 
 ### 4.3 Conversation
 
@@ -146,6 +180,7 @@ interface Conversation {
   companyId: CompanyId;
   title: string;
   assistantRole: "MARKETING" | "OPERATIONS" | "EMPLOYEE";
+  scope: KnowledgeScope;
   createdBy: UserId;
   createdAt: string;
   updatedAt: string;
@@ -201,6 +236,7 @@ interface MemoryCandidate {
   id: CandidateId;
   companyId: CompanyId;
   conversationId?: ConversationId;
+  scope: KnowledgeScope;
   type: MemoryType;
   title: string;
   statement: string;
@@ -236,6 +272,7 @@ interface MemoryRecord {
   status: MemoryStatus;
   currentVersion: number;
   title: string;
+  scope: KnowledgeScope;
   appliesToRoles: CompanyRole[];
   sensitivity: Sensitivity;
   tags: string[];
@@ -261,6 +298,7 @@ interface MemoryVersion {
   companyId: CompanyId;
   version: number;
   title: string;
+  scope: KnowledgeScope;
   statement: string;
   rationale: string | null;
   appliesToRoles: CompanyRole[];
@@ -276,6 +314,18 @@ interface MemoryVersion {
 ```
 
 Versions are append-only. Corrections create a new version.
+
+A direct Playbook amendment by an authorized owner creates the next immutable
+version and atomically advances `MemoryRecord.currentVersion`. The new version
+retains prior source references and adds a `MANUAL` source reference representing
+the owner-authored edit. Its structured state is authoritative immediately;
+`indexStatus` returns to `PENDING` until the derived Knowledge Base copy is ready.
+
+Directly created Playbook pages follow the same approved record and immutable
+version model. A page created from chat references the selected conversation
+messages; a page created in the Playbook receives a `MANUAL` owner source. Scope
+is copied to the record and every version so history cannot change meaning when an
+organizational unit is renamed or filtered.
 
 ### 4.9 Artifact
 
@@ -357,6 +407,7 @@ A memory is authoritative only when all are true:
 memory.companyId === request.companyId
 memory.status === "APPROVED"
 memory.indexStatus === "READY" // except explicit controlled fallback
+memory.scope.level === "COMPANY" || actor and request include memory.scope.organizationalUnitId
 requestedRole is allowed by memory.appliesToRoles
 actor is allowed to view memory.sensitivity
 requested version === memory.currentVersion
@@ -373,13 +424,16 @@ Centralize this logic in one tested domain function.
 | Company | `COMPANY#{companyId}` | `PROFILE` |
 | Membership | `COMPANY#{companyId}` | `MEMBER#{userId}` |
 | Conversation | `COMPANY#{companyId}` | `CONVERSATION#{conversationId}` |
-| Message | `CONVERSATION#{conversationId}` | `MESSAGE#{createdAt}#{messageId}` |
+| Message | `COMPANY#{companyId}#CONVERSATION#{conversationId}` | `MESSAGE#{createdAt}#{messageId}` |
 | Candidate | `COMPANY#{companyId}` | `CANDIDATE#{candidateId}` |
 | Memory record | `COMPANY#{companyId}` | `MEMORY#{memoryId}` |
-| Memory version | `MEMORY#{memoryId}` | `VERSION#{versionPadded}` |
+| Memory version | `COMPANY#{companyId}#MEMORY#{memoryId}` | `VERSION#{versionPadded}` |
 | Source | `COMPANY#{companyId}` | `SOURCE#{sourceId}` |
 | Artifact | `COMPANY#{companyId}` | `ARTIFACT#{artifactId}` |
 | Audit event | `COMPANY#{companyId}` | `AUDIT#{createdAt}#{eventId}` |
+| Onboarding session | `COMPANY#{companyId}` | `ONBOARDING#{sessionId}` |
+| Import batch | `COMPANY#{companyId}` | `IMPORT#{batchId}` |
+| Imported item | `COMPANY#{companyId}` | `IMPORTED_ITEM#{itemId}` |
 
 ### GSI1
 
@@ -393,8 +447,21 @@ Examples:
 | Memories by type | `COMPANY#{companyId}#MEMORY#{type}` | `{updatedAt}#{memoryId}` |
 | Current approved memories | `COMPANY#{companyId}#MEMORY#APPROVED` | `{updatedAt}#{memoryId}` |
 | Conversations by role | `COMPANY#{companyId}#CONVERSATION#{role}` | `{updatedAt}#{conversationId}` |
+| Membership by identity | `IDENTITY#{provider}#{subject}` | `COMPANY#{companyId}` |
+| OAuth client | `OAUTH_CLIENT#{clientId}` | `PROFILE` |
+| OAuth authorization code | `OAUTH_CODE#{sha256(code)}` | `CODE` |
+| OAuth refresh grant | `OAUTH_REFRESH#{sha256(token)}` | `GRANT` |
+| OAuth refresh family | `OAUTH_FAMILY#{familyId}` | `{createdAt}` |
 
 Do not rely on a scan for primary UI flows.
+
+Every business-data partition key includes the trusted company namespace, including
+child collections such as messages and immutable memory versions. Opaque UUIDs or
+ULIDs reduce accidental ID reuse but are not an authorization or isolation
+boundary. Deliberate global lookup partitions such as identity and OAuth records
+may omit the company prefix only when they return authorization pointers rather
+than company content; the resulting membership is reloaded and checked before any
+business-data access.
 
 ## 8. Required access patterns
 
@@ -412,6 +479,17 @@ Do not rely on a scan for primary UI flows.
 12. Update index status conditionally.
 13. List recent audit events.
 14. Delete/reset demo-company entities safely.
+15. List all conversations for a company ordered by recent activity.
+16. List current knowledge by company or department scope.
+17. Resolve one membership from a trusted identity-provider subject.
+18. List, invite, and update memberships for the current company.
+19. Register and load one MCP OAuth client without scanning.
+20. Consume one authorization code exactly once.
+21. Rotate or revoke one hashed refresh grant and revoke a token family.
+
+OAuth items use DynamoDB TTL for expired codes and refresh grants. TTL is cleanup,
+not authorization: every read still checks expiry, binding, and one-time use.
+Tokens and codes are never stored in plaintext.
 
 ## 9. Canonical index document
 
@@ -425,6 +503,7 @@ Render a memory version into deterministic Markdown:
 - Version: 1
 - Type: DECISION
 - Status: APPROVED
+- Scope: COMPANY
 - Effective from: 2026-07-11T...
 - Applies to: MARKETING, SALES, FRONT_DESK
 - Sensitivity: INTERNAL
@@ -462,3 +541,15 @@ Initial safe limits:
 - Chat message: set a reasonable server-side limit and surface it clearly.
 
 Codex may adjust exact limits but must keep them explicit and tested.
+
+## 11. Onboarding and imported-source records
+
+`OnboardingSession` stores the proof question, state, active batch, three prioritized candidate IDs, newly approved memory IDs, completion time, and optimistic version. Its states are `GOAL`, `SOURCE`, `PROCESSING`, `REVIEWING`, `PROVING`, `COMPLETED`, and `SKIPPED`.
+
+`ImportBatch` stores company, actor, provider, checksum, idempotency key, stage, lease owner/expiry, counts, candidate IDs, safe error code, timestamps, and optimistic version. Its states are `DRAFT`, `PROCESSING`, `COMPLETED`, `FAILED`, and `CANCELLED`.
+
+`ImportedItem` links one canonical source to its batch with provider metadata, checksum, content length, parsing state, external conversation ID when present, and retention time. Item states are `QUEUED`, `PARSING`, `READY`, `FAILED`, and `CANCELLED`.
+
+`ImportedSource` keeps canonical kind, provider, source locator, checksum, private storage key, content status, retention class, actor, and timestamps. Provider mapping is `PASTE → MANUAL` and `CHATGPT → CONVERSATION`; future adapters must preserve canonical source kinds rather than add folders. Retention classes are `UNAPPROVED_30_DAYS`, `ZERO_CANDIDATE_24_HOURS`, `ALL_IGNORED_7_DAYS`, `APPROVED`, and `DELETED`.
+
+Active-session and idempotency lookups use GSI1. Every primary read and conditional update still includes `companyId`; no runtime onboarding path scans across companies.

@@ -2,7 +2,7 @@
 
 ## Demo objective
 
-Show that MLC turns one normal owner statement into approved organizational memory that changes future work for both AI assistants and a human employee.
+Show that My Little Company turns one normal owner statement into approved organizational memory that changes future work for both AI assistants and a human employee.
 
 Do not spend the demo explaining infrastructure before the product value is visible.
 
@@ -39,11 +39,11 @@ Enter:
 
 > “We never discount more than 15%. We prefer offering a free add-on because we want to maintain a premium image.”
 
-MLC shows a suggested company knowledge card.
+My Little Company shows a suggested company knowledge card.
 
 Say:
 
-> “This is the key difference from normal chat history. MLC recognized something useful beyond this conversation, but it did not silently turn it into company truth.”
+> “This is the key difference from normal chat history. My Little Company recognized something useful beyond this conversation, but it did not silently turn it into company truth.”
 
 Briefly show:
 

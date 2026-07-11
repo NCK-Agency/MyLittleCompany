@@ -1,0 +1,21 @@
+import { apiError, ok } from "@/server/api-response";
+import { requireActor } from "@/server/auth-context";
+import { membershipService } from "@/server/container";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(): Promise<Response> {
+  try {
+    return ok(await membershipService.list(await requireActor()));
+  } catch (error) {
+    return apiError(error);
+  }
+}
+
+export async function POST(request: Request): Promise<Response> {
+  try {
+    return ok(await membershipService.invite(await request.json(), await requireActor()), 201);
+  } catch (error) {
+    return apiError(error);
+  }
+}
