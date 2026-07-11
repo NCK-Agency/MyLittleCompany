@@ -49,9 +49,9 @@ AWS resources, Netlify state, credentials, and application data are not changed.
   order, and review all tracked and untracked work for secrets or generated noise.
 - [x] Run focused pre-landing review, fix verified blockers, and execute lint,
   typecheck, unit tests, production build, E2E, and diff-hygiene checks.
-- [ ] Commit the complete intentional working tree, fast-forward or merge it into
+- [x] Commit the complete intentional working tree, fast-forward or merge it into
   `main`, verify the final tree, and push `main` to GitHub.
-- [ ] Record exact verification, commit, push, remaining demo gaps, and rollback
+- [x] Record exact verification, commit, push, remaining demo gaps, and rollback
   evidence in this checkpoint.
 
 **Pre-landing review (2026-07-11):** The deterministic local product implements
@@ -72,6 +72,15 @@ fake credentials in screening tests. `deno.lock` was confirmed as unrelated
 generated output and excluded. There is one worktree, no stash, and no remote
 `codex/*` branch; both local Codex branches started from the same commit already
 contained by local `main`.
+
+**Integration evidence (2026-07-11):** The reviewed tree was committed on
+`codex/onboarding-proof-first` as `52d46d2` (`feat: consolidate the demo-ready
+product`). `codex/aws-vertical-slice` was already an ancestor at `8c0087b`, so
+no divergent change or conflict needed resolution. `main` fast-forwarded to
+`52d46d2` and was pushed to `origin/main`; the local and GitHub refs then matched
+exactly with divergence `0 0`. Both local `codex/*` branches are reported as
+merged into `main`. No force-push, branch deletion, stash mutation, deployment,
+or cloud-data change was performed.
 
 **Remaining demo gaps:** The local competition path is demo-ready, but the
 hosted AWS plus private ChatGPT claim remains gated by a successful live AWS
