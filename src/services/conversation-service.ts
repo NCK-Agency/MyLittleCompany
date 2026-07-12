@@ -88,6 +88,7 @@ export class ConversationService {
     if (existingOwner) {
       const completedAssistant = await this.findCompletedAssistant(existingOwner);
       if (completedAssistant) {
+        const conversationTranscript = await this.conversations.listMessages(conversationId, actor.companyId);
         const candidate = conversation.assistantRole === "MARKETING" && canAccess(actor, "SUGGEST", conversation.scope)
           ? await this.suggestions.suggestFromConversation({
             content: values.content,
@@ -96,6 +97,7 @@ export class ConversationService {
             conversationId: conversation.id,
             messageId: existingOwner.id,
             source,
+            conversationMessages: conversationTranscript,
           }, actor)
           : null;
         return {
@@ -110,6 +112,8 @@ export class ConversationService {
     const requestedRoles = conversation.assistantRole === "EMPLOYEE"
       ? ["EMPLOYEE", "FRONT_DESK"] as const
       : [conversation.assistantRole];
+    const priorMessages = await this.conversations.listMessages(conversationId, actor.companyId);
+    const conversationTranscript = [...priorMessages, ownerMessage];
     const approved = canAccess(actor, "READ", conversation.scope)
       ? await this.retrieval.retrieve(values.content, actor, [...requestedRoles], conversation.scope)
       : [];
@@ -121,6 +125,7 @@ export class ConversationService {
       const generatedSop = await this.model.generateSop({
         companyId: actor.companyId,
         request: values.content,
+        conversation: conversationTranscript,
         approvedMemories: approved,
       });
       sop = {
@@ -144,6 +149,7 @@ export class ConversationService {
       generated = await this.model.generateEmployeeResponse({
         companyId: actor.companyId,
         question: values.content,
+        conversation: conversationTranscript,
         approvedMemories: approved,
       });
       const sourceMemories = generated.sourceMemoryIds.flatMap((id) => {
@@ -166,6 +172,7 @@ export class ConversationService {
       generated = await this.model.generateMarketingResponse({
         companyId: actor.companyId,
         message: values.content,
+        conversation: conversationTranscript,
         approvedMemories: approved,
       });
     }
@@ -200,6 +207,7 @@ export class ConversationService {
         conversationId: conversation.id,
         messageId: ownerMessage.id,
         source,
+        conversationMessages: conversationTranscript,
       }, actor)
       : null;
     return {

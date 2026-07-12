@@ -93,6 +93,33 @@ describe("ConversationService recovery", () => {
     expect(await conversations.listMessages(conversation.id, ownerActor().companyId)).toHaveLength(2);
   });
 
+  it("passes the complete persisted transcript to later conversation turns", async () => {
+    const generateMarketingResponse = vi.fn()
+      .mockResolvedValueOnce({ content: "First answer.", sourceMemoryIds: [] })
+      .mockResolvedValueOnce({ content: "Second answer.", sourceMemoryIds: [] });
+    const { service } = serviceWith({ generateMarketingResponse });
+    const conversation = await service.create({ assistantRole: "MARKETING", title: "Context" }, ownerActor());
+
+    await service.send(conversation.id, {
+      content: "We want the offer to feel premium.",
+      idempotencyKey: "context-first-turn",
+    }, ownerActor());
+    await service.send(conversation.id, {
+      content: "Now make that idea shorter.",
+      idempotencyKey: "context-second-turn",
+    }, ownerActor());
+
+    expect(generateMarketingResponse).toHaveBeenCalledTimes(2);
+    expect(generateMarketingResponse.mock.calls[1]?.[0]).toMatchObject({
+      message: "Now make that idea shorter.",
+      conversation: [
+        { actorType: "USER", content: "We want the offer to feel premium." },
+        { actorType: "ASSISTANT", content: "First answer." },
+        { actorType: "USER", content: "Now make that idea shorter." },
+      ],
+    });
+  });
+
   it("replays the stored structured SOP without regenerating it", async () => {
     const approved = createDemoState().memories[0]!;
     const generatedSop = {

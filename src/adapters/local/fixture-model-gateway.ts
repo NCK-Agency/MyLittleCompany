@@ -15,8 +15,10 @@ function discountCap(memory: HydratedMemory): string {
 export class FixtureModelGateway implements ModelGateway {
   async generateMarketingResponse(input: {
     message: string;
+    conversation?: Message[];
     approvedMemories: HydratedMemory[];
   }): Promise<{ content: string; sourceMemoryIds: string[] }> {
+    void input.conversation;
     const rule = pricingMemory(input.approvedMemories);
     const normalized = input.message.toLowerCase();
 
@@ -46,6 +48,7 @@ export class FixtureModelGateway implements ModelGateway {
 
   async generateEmployeeResponse(input: {
     question: string;
+    conversation?: Message[];
     approvedMemories: HydratedMemory[];
   }): Promise<{ content: string; sourceMemoryIds: string[] }> {
     void input.question;
@@ -79,9 +82,13 @@ export class FixtureModelGateway implements ModelGateway {
 
   async extractCandidate(input: {
     ownerMessage: Message;
+    conversation?: Message[];
     createdBy: string;
   }): Promise<MemoryCandidate | null> {
-    if (!input.ownerMessage.content.toLowerCase().includes("never discount more than 15%")) {
+    const messages = input.conversation ?? [input.ownerMessage];
+    const ownerMessages = messages.filter((message) => message.actorType === "USER");
+    const transcript = ownerMessages.map((message) => message.content).join("\n").toLowerCase();
+    if (!transcript.includes("never discount more than 15%")) {
       return null;
     }
     const candidate: MemoryCandidate = {
@@ -99,14 +106,12 @@ export class FixtureModelGateway implements ModelGateway {
       appliesToRoles: ["MARKETING", "SALES", "FRONT_DESK", "EMPLOYEE", "OPERATIONS"],
       tags: ["pricing", "promotion"],
       sensitivity: "INTERNAL",
-      sourceRefs: [
-        {
-          sourceId: `source-${input.ownerMessage.id}`,
+      sourceRefs: ownerMessages.map((message) => ({
+          sourceId: `source-${message.id}`,
           label: "Tuesday campaign conversation",
-          messageId: input.ownerMessage.id,
-          excerpt: input.ownerMessage.content.slice(0, 300),
-        },
-      ],
+          messageId: message.id,
+          excerpt: message.content.slice(0, 300),
+        })),
       confidence: 0.99,
       relation: "UNRELATED",
       relatedMemoryIds: [],
@@ -214,7 +219,8 @@ export class FixtureModelGateway implements ModelGateway {
     };
   }
 
-  async generateSop(input: { request: string; approvedMemories: HydratedMemory[] }): Promise<SopDraft> {
+  async generateSop(input: { request: string; conversation?: Message[]; approvedMemories: HydratedMemory[] }): Promise<SopDraft> {
+    void input.conversation;
     const rule = pricingMemory(input.approvedMemories);
     if (!rule) throw new Error("NO_APPROVED_CONTEXT");
     const cap = discountCap(rule);

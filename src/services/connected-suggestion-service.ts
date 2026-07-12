@@ -3,7 +3,7 @@ import { z } from "zod";
 import { canAccess, isOwner } from "@/domain/authorization";
 import { appError } from "@/domain/errors";
 import { containsLikelySecret } from "@/domain/secret-screening";
-import { candidateSchema, createManualCandidateSchema, knowledgeScopeSchema } from "@/domain/schemas";
+import { candidateSchema, createManualCandidateSchema, knowledgeScopeSchema, messageSchema } from "@/domain/schemas";
 import type {
   ActorContext,
   Company,
@@ -27,6 +27,7 @@ const connectedSuggestionSchema = z.object({
 const conversationSuggestionSchema = connectedSuggestionSchema.extend({
   conversationId: z.string().min(1).max(128),
   messageId: z.string().min(1).max(128),
+  conversationMessages: z.array(messageSchema).min(1),
   source: z.object({
     sourceId: z.string().min(1).max(128),
     label: z.string().min(1).max(200),
@@ -122,6 +123,7 @@ export class ConnectedSuggestionService {
     candidateId: string;
     conversationId?: string;
     messageId: string;
+    conversationMessages?: Message[];
     source: SourceReference;
     saveSource: boolean;
   }, actor: ActorContext): Promise<ConnectedSuggestionResult> {
@@ -143,6 +145,7 @@ export class ConnectedSuggestionService {
     const extracted = await this.model.extractCandidate({
       companyId: actor.companyId,
       ownerMessage: message,
+      conversation: input.conversationMessages,
       createdBy: actor.userId,
     });
     if (!extracted) {
@@ -161,7 +164,12 @@ export class ConnectedSuggestionService {
       companyId: actor.companyId,
       conversationId: input.conversationId,
       scope: input.scope,
-      sourceRefs: [source],
+      sourceRefs: extracted.sourceRefs.map((reference) => reference.messageId === input.messageId
+        ? source
+        : {
+          ...reference,
+          label: input.source.label,
+        }),
       status: "PROPOSED",
       createdBy: actor.userId,
       createdAt: now,

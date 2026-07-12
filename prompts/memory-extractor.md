@@ -1,6 +1,6 @@
 ---
 name: memory-extractor
-version: 1.0.0
+version: 1.1.0
 output_schema: schemas/memory-candidate.schema.json
 ---
 
@@ -38,6 +38,9 @@ Return zero or more proposed company-knowledge items that may be useful in futur
 12. Never include approval status, approver, or approval timestamp.
 13. Return valid JSON only, conforming exactly to the supplied schema.
 14. Return an empty `candidates` array when nothing deserves durable memory.
+15. Read the complete chronological transcript before extracting. `sourceMessageIds`
+    may cite only supplied owner (`USER`) messages that support the candidate;
+    assistant messages provide context but are never evidence of company truth.
 
 # Type guidance
 

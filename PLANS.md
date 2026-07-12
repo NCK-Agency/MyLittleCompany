@@ -2,6 +2,42 @@
 
 This is the live execution plan. Codex must update it before and during multi-file work. Keep completed items and verification evidence so future sessions can understand what actually happened.
 
+## Active checkpoint: preserve complete conversation context during conversion
+
+**Outcome:** When My Little Company turns a conversation into an assistant response
+or suggested company knowledge, provide the complete persisted transcript (with
+stable message IDs and speakers) to the server-side model boundary. Keep the
+latest owner message explicit, treat transcript content as data rather than
+instructions, and retain every model-selected owner message as candidate
+provenance.
+
+**Affected files:** `src/ports/model-gateway.ts`, conversation and suggestion
+services, local and OpenAI model adapters, assistant prompts, focused model and
+conversation tests, and this plan. No approved-memory retrieval, client API,
+or storage schema change is intended.
+
+**Implementation steps:**
+
+- [x] Pass the persisted transcript plus the current message through every
+  conversation generation and extraction call.
+- [x] Serialize the transcript with stable IDs, roles, timestamps, and content;
+  validate selected user-message provenance before persistence.
+- [x] Update prompts and fixture behavior so transcript context is useful but
+  cannot override application instructions or approved company knowledge.
+- [x] Add regression tests for multi-turn response and knowledge extraction,
+  then run the required repository gates.
+
+**Verification results (2026-07-12):** `pnpm lint`, `pnpm typecheck`, `pnpm
+test` (32 files, 138 tests), `pnpm build`, and `git diff --check` pass. Fixture
+browser coverage also passes 10 local journeys; three live OpenAI journeys are
+correctly skipped in fixture mode. Regression coverage proves a second chat turn
+receives the first owner message, its assistant response, and the new owner
+message; OpenAI extraction receives prior owner and assistant turns while a
+candidate can cite only supplied owner message IDs.
+
+**Rollback:** Revert this checkpoint only. Conversation persistence and approved
+memory records are unchanged, so no data rollback is required.
+
 ## Active checkpoint: render chat markdown correctly
 
 **Outcome:** Render assistant and user chat text as readable markdown in the conversation UI, including headings, emphasis, lists, code, and links, while preserving the existing data-message cards and keeping rendering safe.

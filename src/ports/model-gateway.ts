@@ -17,11 +17,13 @@ export interface ModelGateway {
   generateMarketingResponse(input: {
     companyId: string;
     message: string;
+    conversation?: Message[];
     approvedMemories: HydratedMemory[];
   }): Promise<GeneratedText>;
   generateEmployeeResponse(input: {
     companyId: string;
     question: string;
+    conversation?: Message[];
     approvedMemories: HydratedMemory[];
   }): Promise<GeneratedText>;
   generateProofResponse(input: {
@@ -32,6 +34,7 @@ export interface ModelGateway {
   extractCandidate(input: {
     companyId: string;
     ownerMessage: Message;
+    conversation?: Message[];
     createdBy: string;
   }): Promise<MemoryCandidate | null>;
   extractOnboardingCandidates(input: {
@@ -59,6 +62,7 @@ export interface ModelGateway {
   generateSop(input: {
     companyId: string;
     request: string;
+    conversation?: Message[];
     approvedMemories: HydratedMemory[];
   }): Promise<SopDraft>;
 }

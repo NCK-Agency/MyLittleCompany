@@ -168,6 +168,7 @@ describe("OpenAIModelGateway", () => {
       .generateMarketingResponse({
         companyId: "demo-salon",
         message: "Create an offer",
+        conversation: [ownerMessage],
         approvedMemories: [approved],
       });
 
@@ -176,7 +177,7 @@ describe("OpenAIModelGateway", () => {
     expect(result.content).not.toContain("[[memory:");
     expect(result.metadata).toMatchObject({
       modelId: "gpt-5.6-terra-2026-07-01",
-      promptVersion: "1.0.0",
+      promptVersion: "1.1.0",
       inputTokens: 10,
       outputTokens: 5,
       providerRequestId: "request-1",
@@ -195,6 +196,8 @@ describe("OpenAIModelGateway", () => {
     });
     expect(body.instructions).toContain("Marketing Assistant");
     expect(body.input).toContain("<approved-memory-data>");
+    expect(body.input).toContain("<conversation-transcript>");
+    expect(body.input).toContain('"id":"message-1"');
     expect(options).toEqual({ maxRetries: 0, timeout: 25_000 });
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("UNKNOWN_MEMORY_CITATION"));
     warn.mockRestore();
@@ -234,9 +237,40 @@ describe("OpenAIModelGateway", () => {
       statement: "Promotional discounts must not exceed 15%.",
       relatedMemoryIds: [],
       sourceRefs: [{ sourceId: "source-message-1", messageId: "message-1" }],
-      extractionPromptVersion: "1.0.0",
+      extractionPromptVersion: "1.1.0",
       modelId: "gpt-5.6-terra-2026-07-01",
     });
+  });
+
+  it("keeps prior owner and assistant messages when extracting knowledge from a later turn", async () => {
+    const earlierOwner: Message = {
+      ...ownerMessage,
+      id: "message-context",
+      content: "We want to protect our premium positioning.",
+    };
+    const priorAssistant: Message = {
+      ...ownerMessage,
+      id: "message-assistant",
+      actorType: "ASSISTANT",
+      content: "A complimentary add-on can support that goal.",
+    };
+    const parse = vi.fn().mockResolvedValue(response({
+      candidates: [{
+        ...extractedCandidate,
+        sourceMessageIds: ["message-context", "message-1"],
+      }],
+    }));
+    const result = await new OpenAIModelGateway(openAIClient(parse), resolver()).extractCandidate({
+      companyId: "demo-salon",
+      ownerMessage,
+      conversation: [earlierOwner, priorAssistant, ownerMessage],
+      createdBy: "owner",
+    });
+
+    const input = (parse.mock.calls[0]?.[0] as { input: string }).input;
+    expect(input).toContain('"id":"message-context"');
+    expect(input).toContain('"speaker":"ASSISTANT"');
+    expect(result?.sourceRefs.map((source) => source.messageId)).toEqual(["message-context", "message-1"]);
   });
 
   it("extracts onboarding candidates from the supplied company source", async () => {

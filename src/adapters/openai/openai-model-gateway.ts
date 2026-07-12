@@ -138,6 +138,15 @@ function memoryContext(memories: HydratedMemory[]): string {
   })));
 }
 
+function conversationContext(messages: Message[] | undefined): string {
+  return JSON.stringify((messages ?? []).map((message) => ({
+    id: message.id,
+    speaker: message.actorType,
+    createdAt: message.createdAt,
+    content: message.content,
+  })));
+}
+
 function outputSchemaName(promptName: string): string {
   return `${promptName.replace(/[^a-zA-Z0-9_-]/g, "_")}_output`;
 }
@@ -271,6 +280,7 @@ export class OpenAIModelGateway implements ModelGateway {
   async generateMarketingResponse(input: {
     companyId: string;
     message: string;
+    conversation?: Message[];
     approvedMemories: HydratedMemory[];
   }): Promise<GeneratedText> {
     const result = await this.invokeStructured(
@@ -278,6 +288,7 @@ export class OpenAIModelGateway implements ModelGateway {
       input.companyId,
       [
         "<approved-memory-data>", memoryContext(input.approvedMemories), "</approved-memory-data>",
+        "<conversation-transcript>", conversationContext(input.conversation), "</conversation-transcript>",
         "<owner-request>", input.message, "</owner-request>",
       ].join("\n"),
       generatedTextSchema,
@@ -288,6 +299,7 @@ export class OpenAIModelGateway implements ModelGateway {
   async generateEmployeeResponse(input: {
     companyId: string;
     question: string;
+    conversation?: Message[];
     approvedMemories: HydratedMemory[];
   }): Promise<GeneratedText> {
     const result = await this.invokeStructured(
@@ -295,6 +307,7 @@ export class OpenAIModelGateway implements ModelGateway {
       input.companyId,
       [
         "<approved-memory-data>", memoryContext(input.approvedMemories), "</approved-memory-data>",
+        "<conversation-transcript>", conversationContext(input.conversation), "</conversation-transcript>",
         "<employee-question>", input.question, "</employee-question>",
       ].join("\n"),
       generatedTextSchema,
@@ -313,19 +326,31 @@ export class OpenAIModelGateway implements ModelGateway {
   async extractCandidate(input: {
     companyId: string;
     ownerMessage: Message;
+    conversation?: Message[];
     createdBy: string;
   }): Promise<MemoryCandidate | null> {
+    const messages = input.conversation ?? [input.ownerMessage];
+    const userMessages = new Map(messages
+      .filter((message) => message.actorType === "USER")
+      .map((message) => [message.id, message]));
     const result = await this.invokeStructured(
       "memory-extractor",
       input.companyId,
       JSON.stringify({
-        messages: [{ id: input.ownerMessage.id, content: input.ownerMessage.content }],
+        messages: messages.map((message) => ({
+          id: message.id,
+          speaker: message.actorType,
+          createdAt: message.createdAt,
+          content: message.content,
+        })),
         approvedMemories: [],
       }),
       extractionSchema,
     );
     const extracted = result.value.candidates[0];
     if (!extracted) return null;
+    const sourceMessages = extracted.sourceMessageIds.map((id) => userMessages.get(id));
+    if (sourceMessages.some((message) => !message)) throw appError("MODEL_OUTPUT_INVALID");
     return candidateSchema.parse({
       id: `candidate-${crypto.randomUUID()}`,
       version: 1,
@@ -339,12 +364,12 @@ export class OpenAIModelGateway implements ModelGateway {
       appliesToRoles: extracted.appliesToRoles,
       tags: extracted.tags,
       sensitivity: extracted.sensitivity,
-      sourceRefs: [{
-        sourceId: `source-${input.ownerMessage.id}`,
+      sourceRefs: sourceMessages.map((message) => ({
+        sourceId: `source-${message!.id}`,
         label: "Owner conversation",
-        messageId: input.ownerMessage.id,
-        excerpt: extracted.evidenceExcerpt,
-      }],
+        messageId: message!.id,
+        excerpt: message!.id === input.ownerMessage.id ? extracted.evidenceExcerpt : message!.content.slice(0, 300),
+      })),
       confidence: extracted.confidence,
       relation: extracted.relation,
       relatedMemoryIds: [],
@@ -433,6 +458,7 @@ export class OpenAIModelGateway implements ModelGateway {
   async generateSop(input: {
     companyId: string;
     request: string;
+    conversation?: Message[];
     approvedMemories: HydratedMemory[];
   }): Promise<SopDraft> {
     const result = await this.invokeStructured(
@@ -440,6 +466,7 @@ export class OpenAIModelGateway implements ModelGateway {
       input.companyId,
       JSON.stringify({
         request: input.request,
+        conversation: JSON.parse(conversationContext(input.conversation)) as unknown,
         approvedMemories: JSON.parse(memoryContext(input.approvedMemories)) as unknown,
       }),
       sopOutputSchema,
