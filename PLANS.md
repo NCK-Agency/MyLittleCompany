@@ -2,6 +2,97 @@
 
 This is the live execution plan. Codex must update it before and during multi-file work. Keep completed items and verification evidence so future sessions can understand what actually happened.
 
+## Active checkpoint: render chat markdown correctly
+
+**Outcome:** Render assistant and user chat text as readable markdown in the conversation UI, including headings, emphasis, lists, code, and links, while preserving the existing data-message cards and keeping rendering safe.
+
+**Affected files:** `src/components/assistant-ui/mlc-thread.tsx`, `package.json`, `pnpm-lock.yaml`, and this plan.
+
+**Implementation steps:**
+
+- [x] Add the assistant-ui markdown renderer dependency.
+- [x] Replace the plain text message part with the markdown renderer and scoped styling.
+- [x] Verify lint, typecheck, tests, and build; record any remaining risk.
+
+**Verification results (2026-07-12):** `pnpm lint`, `pnpm typecheck`, all 31
+unit-test files and 134 tests, and `pnpm build` pass. Markdown is rendered by
+`@assistant-ui/react-markdown` with `remark-gfm`; raw HTML remains disabled by
+the renderer defaults, and the existing source, SOP, and knowledge cards are
+unchanged. The first sandboxed build attempt could not resolve Google Fonts;
+the same build passed with the repository's existing network-enabled build
+path. An unrelated untracked description file remains untouched.
+
+**Rollback:** Restore the previous plain text message component and remove the markdown dependency.
+
+## Active checkpoint: enable the private ChatGPT MCP app on Netlify
+
+**Outcome:** Activate the already implemented tool-only My Little Company MCP
+connector on the linked Netlify production site, deploy the current MCP-capable
+revision, verify the public OAuth discovery and protected-resource boundary, and
+hand the owner an exact ChatGPT Developer Mode connection sequence. Preserve the
+existing rule that connected assistants may search/fetch approved knowledge and
+create Review suggestions, but may never approve company truth.
+
+**Affected files and external state:** This plan, `netlify.toml`, plus the linked
+Netlify production environment and deploy state. No MCP domain, OAuth, retrieval,
+membership, or UI code change is required. The canonical connector origin is
+`https://my-little-company-demo.netlify.app` because the existing Auth.js and
+Cognito callback configuration already use that exact stable origin.
+
+**Implementation steps:**
+
+- [x] Confirm the repository already exposes stateless Streamable HTTP at
+  `/mcp`, OAuth discovery/DCR/PKCE/JWKS, `search`, `fetch`, and the governed
+  `suggest_company_knowledge` write with no approval tool.
+- [x] Verify the Netlify production context has durable AWS persistence,
+  Cognito auth, OpenAI configuration, a stable Auth.js secret, and a stable MCP
+  signing JWK without printing secret values.
+- [x] Run focused MCP/OAuth tests and the required repository verification gates.
+- [x] Explicitly enable Netlify's official Next.js runtime plugin so App Router
+  route handlers are packaged as serverless functions instead of publishing
+  `.next` as a static folder.
+- [x] Set production `MCP_ENABLED=true`, deploy the current revision, and keep
+  secrets restricted to the Netlify Functions runtime.
+- [x] Verify discovery and JWKS responses, then confirm unauthenticated `/mcp`
+  returns the expected `401` bearer challenge rather than data or a `404`.
+- [ ] Complete the owner-run ChatGPT OAuth link and acceptance prompts from
+  `docs/CHATGPT_APP.md`; record any interactive step that cannot be completed
+  from this workspace as an explicit handoff rather than a simulated success.
+
+**Verification:** Run the focused environment, OAuth, MCP, and scoped-access
+tests first; then `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and
+`pnpm test:e2e`. After deployment, check the two OAuth discovery documents,
+JWKS, icon, and unauthenticated MCP challenge at the permanent origin. The final
+ChatGPT acceptance sequence is search, fetch, suggest after confirmation,
+pre-approval exclusion, Review approval, and post-approval retrieval.
+
+**Verification results (2026-07-12):** Focused environment, OAuth, MCP, and
+scoped-access coverage passes (4 files, 22 tests). `pnpm lint`, `pnpm
+typecheck`, all 31 unit-test files and 134 tests, `pnpm build`, and the 13
+Playwright journeys pass; the browser suite required the normal elevated local
+port permission after the sandbox rejected `0.0.0.0:3000`. Netlify production
+has `MCP_ENABLED=true` while protected values remain non-readable through the
+CLI. Commit `e4fc595` adds only the official `@netlify/plugin-nextjs` runtime
+declaration. Production deploy `6a52ddd40830630009a2ccdb` is ready and contains
+one server function plus one edge function.
+
+At `https://my-little-company-demo.netlify.app`, the application and icon return
+`200`; both OAuth discovery documents and JWKS return `200` with resource
+`https://my-little-company-demo.netlify.app/mcp`, scopes `knowledge:read` and
+`knowledge:suggest`, PKCE S256, and signing key ID `mlc-mcp-1`.
+Unauthenticated `/mcp` returns `401`, `Cache-Control: no-store`, and the exact
+protected-resource challenge. A live dynamic-client registration returns `201`
+with Authorization Code, rotating refresh-token, PKCE, and public-client
+metadata. The remaining unchecked item is intentionally interactive: the owner
+must create the ChatGPT Draft app and complete Cognito sign-in in their ChatGPT
+account; it was not simulated from this workspace.
+
+**Rollback:** Set production `MCP_ENABLED=false` and redeploy. This removes the
+public MCP/OAuth surface without deleting clients, tokens, memberships,
+suggestions, approved knowledge, or ordinary web-app data. If the new deploy has
+an unrelated regression, restore the prior published Netlify deploy after the
+flag is disabled.
+
 ## Active checkpoint: reconcile the OpenAI architecture documentation
 
 **Outcome:** Make the documented hosted architecture match the completed

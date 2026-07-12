@@ -5,12 +5,13 @@ import {
   type AppendMessage,
   ComposerPrimitive,
   type DataMessagePartProps,
-  MessagePartPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
   useAssistantRuntime,
   useExternalStoreRuntime,
 } from "@assistant-ui/react";
+import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
+import remarkGfm from "remark-gfm";
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import type { AssistantRole, GroundedAnswer, MemoryCandidate, SourceReference } from "@/domain/types";
@@ -32,7 +33,7 @@ function useMlcThreadActions(): MlcThreadActions {
 }
 
 function MessageText(): ReactNode {
-  return <MessagePartPrimitive.Text className="whitespace-pre-line leading-7" component="p" smooth={false} />;
+  return <MarkdownTextPrimitive className="mlc-markdown" remarkPlugins={[remarkGfm]} smooth={false} />;
 }
 
 function MlcSourcesPart({ data }: DataMessagePartProps<SourceReference[]>): ReactNode {
