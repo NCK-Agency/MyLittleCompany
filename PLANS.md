@@ -1929,3 +1929,39 @@ the parent has requested cleanup approval and has not granted cache deletion.
 No production release is claimed. Netlify metadata confirms the current source
 commit and nodejs22.x major only; historical runtime-log search returned no exact
 Node patch evidence. The new startup log enables verification after deployment.
+
+**Remote verification update:** Draft PR
+https://github.com/NCK-Agency/MyLittleCompany/pull/1 contains source commit
+`30f1dd645f32a1e07eaeb866a2a453e5978859dc`, verified on the remote branch.
+Netlify automatically built preview `6adc9cc7c6e5806d767d663b` successfully
+for exactly that commit. Three fresh function startup events attest Node
+v22.23.4, Brotli 1.1.0, Undici 6.29.1. Preview Home/Login return 200 and
+Workspace returns 307. This proves a patched preview runtime, not production.
+GitHub's Netlify preview status is success; no GitHub Actions runs exist.
+Independent candidate review found no confirmed source-level regression.
+
+**Release remains blocked:** Local fixture E2E is unrun because disk remains
+critical (~230 MiB). Local build is also unrun, although the existing remote
+Netlify build passed. No user caches/shared staging were deleted. Production
+source/deploy is unchanged, and its exact Node patch remains unknown. Its
+configured custom domain fails DNS; the original netlify.app hostname passes
+the same read-only health checks. No production Functions runtime override is
+set. No account/domain/security settings were changed. Original checkout
+status and binary diff match the pre-task snapshots byte-for-byte.
+
+This final receipt is local to the isolated worktree so it does not invalidate
+the exact committed source/deploy evidence above. Resume with available disk,
+run required local fixture gates, then use the authorized existing workflow
+and re-attest production commit/runtime/health before declaring remediation.
+
+**Authorized deployment continuation (2026-10-24):** The owner explicitly asks
+that the live service upgrade be applied and deployed. Add only a credential-free
+GitHub hosted verification workflow (`.github/workflows/node-runtime.yml`) to
+run the existing frozen install, Node smoke, lint, typecheck, unit, build and
+fixture E2E commands under the pinned Node version. This avoids the Mac disk
+blocker; it does not waive or weaken checks, change product behavior, use
+production data/secrets, or replace Netlify's existing deployment workflow.
+Official action revisions are pinned to immutable tag-resolved commits.
+After all checks pass on the exact PR head, merge through GitHub, let the
+existing main-branch Netlify build deploy, and re-attest production startup
+Node version, deployed source commit, health, and rollback identity.
