@@ -165,7 +165,7 @@ demo.
 
 ### Prerequisites
 
-- Node.js 22 or newer, below Node.js 25
+- Node.js 22.23.4+ on the 22.x line, or 24.22.1+ on the 24.x line (`nvm use` selects 22.23.4)
 - pnpm 10.32.1
 
 ### Start the credential-free demo

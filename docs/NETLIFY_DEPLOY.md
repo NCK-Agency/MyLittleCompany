@@ -13,7 +13,7 @@ for invited-user identity. Build settings remain in `netlify.toml`.
 3. Netlify reads:
    - Build command: `pnpm build`
    - Publish directory: `.next`
-   - Node.js: 22
+   - Node.js build baseline: 22.23.4
    - pnpm: the version in `package.json`
 4. Use the permanent origin consistently for `AUTH_URL`, `APP_BASE_URL`, Cognito
    callback/logout URLs, Playbook links, and future MCP metadata.
@@ -81,6 +81,7 @@ Run the same production gates used by Netlify:
 
 ```bash
 pnpm install --frozen-lockfile
+pnpm smoke:node
 pnpm lint
 pnpm typecheck
 pnpm test
@@ -125,3 +126,30 @@ the deployment be described as the working real-LLM demo.
 - If Cognito is the only blocker during a private rehearsal, seeded demo auth may
   be used temporarily and visibly labelled. It does not waive the live OpenAI,
   durable persistence, or authorization checks.
+
+
+## Node runtime security verification (CVE-2026-111497)
+
+The Node security release fixes the bundled Brotli decoder. Keep the existing
+22.x deployment line at 22.23.4 or later; supported local 24.x must be 24.22.1
+or later. The engine range deliberately excludes Node 23 and vulnerable 24.x
+patches. `engine-strict` rejects unsupported package-manager runtimes.
+
+`NODE_VERSION` and `.nvmrc` select the build binary. Netlify's managed Functions
+runtime is selected by major separately, including any external
+`AWS_LAMBDA_JS_RUNTIME` override. Changing a build pin cannot attest the function
+patch version. Do not change account runtime/security settings as part of this
+patch. Confirm the existing override, fresh deployment metadata, and a fresh
+`node_runtime` startup log on the exact deployed commit. The log contains only
+Node, Brotli, and Undici versions; it contains no environment values or user data.
+If a managed function still reports an affected patch, the hosting provider must
+roll out its patched runtime before this service can be marked remediated.
+
+The relevant upstream paths are the OpenAI SDK and Cognito/Auth.js global fetch
+responses. Compressed bytes are decoded before application JSON/Zod validation.
+No direct application Brotli decoder or arbitrary-URL importer was identified.
+`pnpm smoke:node` verifies legitimate Brotli HTTP-response decoding using a
+known local fixture, without exploit input, credentials, or provider calls.
+
+Reference: https://nodejs.org/en/blog/vulnerability/october-2026-security-releases
+Netlify runtime behavior: https://docs.netlify.com/build/functions/configuration/#node-js-version-for-runtime

@@ -1883,3 +1883,85 @@ The scoped design review kept the page as an app workspace rather than a card
 mosaic: one primary work panel, one conditional review panel, and a list-like
 Playbook preview. The full design-review commit workflow was not used because the
 working tree already contained substantial uncommitted user changes.
+
+
+## Security maintenance: CVE-2026-111497 (2026-10-24)
+
+**Outcome:** Pin the existing Node 22 baseline to 22.23.4, exclude vulnerable
+supported-line patches, and verify Netlify's actual function runtime separately.
+The current owner explicitly authorizes bounded security maintenance; unresolved
+Project Control product decisions remain open and no feature is selected.
+
+**Boundary:** Isolated worktree `.tmp/node2shell` on remote main
+`26be57a31d1dc19cd0b72fc20ce151c6d0cc2b3a`; original dirty work is protected.
+Affected files: `.nvmrc`, `.npmrc`, `package.json`, `netlify.toml`,
+`src/instrumentation.ts`, benign runtime smoke, runtime/deployment docs, this plan.
+No major/dependency upgrades, data changes, credential/security-configuration
+changes, shared-host changes, or new product features.
+
+**Verification:** Branch-aware engines, benign Brotli upstream HTTP-response
+round trip, lint/typecheck/test/build/fixture E2E on a patched supported runtime.
+Use existing deployment workflow only after checks pass; verify exact remote
+commit, deployed function version via startup log, and read-only public/auth
+health. Build pins and nodejs22.x metadata alone do not prove remediation.
+
+**Rollback:** Keep production deploy `6a52f3b13cfc770008c988f8`, source
+`26be57a31d1dc19cd0b72fc20ce151c6d0cc2b3a`. Its exact runtime patch is unknown;
+restoring it is not an attested secure rollback. Prefer rebuilding previous
+application source on the patched baseline. No data rollback is needed.
+
+**Status:** Preparing patch; build/E2E deferred for critically low Mac disk space.
+No user files/caches or shared staging will be deleted.
+
+**Verification so far (2026-10-24):** On the existing supported Node v24.22.1,
+`pnpm lint` PASS, `pnpm typecheck` PASS, `pnpm test` PASS (31 files, 136 tests),
+and `pnpm smoke:node` PASS (Brotli 1.2.0, Undici 7.30.1). The benign smoke
+requires loopback-listen permission; its sandbox attempt correctly failed EPERM
+and the authorized elevated attempt passed. Semver boundary checks reject
+22.23.3, 24.22.0, 23, 25, and 26; accept 22.23.4+, 24.22.1+ within supported
+majors. `git diff --check` PASS. No exploit payloads were used.
+
+**Blocked checks:** Node 22.23.4 archive SHA-256 matches official SHASUMS256.txt
+(`037650d0839f457747396f052073fb48333d31bf5abd3c98b74da20d89ebb1ad`),
+but extracting it failed ENOSPC. The incomplete extraction was removed from this
+task's own temporary directory. Build/E2E remain unrun while disk is critical;
+the parent has requested cleanup approval and has not granted cache deletion.
+No production release is claimed. Netlify metadata confirms the current source
+commit and nodejs22.x major only; historical runtime-log search returned no exact
+Node patch evidence. The new startup log enables verification after deployment.
+
+**Remote verification update:** Draft PR
+https://github.com/NCK-Agency/MyLittleCompany/pull/1 contains source commit
+`30f1dd645f32a1e07eaeb866a2a453e5978859dc`, verified on the remote branch.
+Netlify automatically built preview `6adc9cc7c6e5806d767d663b` successfully
+for exactly that commit. Three fresh function startup events attest Node
+v22.23.4, Brotli 1.1.0, Undici 6.29.1. Preview Home/Login return 200 and
+Workspace returns 307. This proves a patched preview runtime, not production.
+GitHub's Netlify preview status is success; no GitHub Actions runs exist.
+Independent candidate review found no confirmed source-level regression.
+
+**Release remains blocked:** Local fixture E2E is unrun because disk remains
+critical (~230 MiB). Local build is also unrun, although the existing remote
+Netlify build passed. No user caches/shared staging were deleted. Production
+source/deploy is unchanged, and its exact Node patch remains unknown. Its
+configured custom domain fails DNS; the original netlify.app hostname passes
+the same read-only health checks. No production Functions runtime override is
+set. No account/domain/security settings were changed. Original checkout
+status and binary diff match the pre-task snapshots byte-for-byte.
+
+This final receipt is local to the isolated worktree so it does not invalidate
+the exact committed source/deploy evidence above. Resume with available disk,
+run required local fixture gates, then use the authorized existing workflow
+and re-attest production commit/runtime/health before declaring remediation.
+
+**Authorized deployment continuation (2026-10-24):** The owner explicitly asks
+that the live service upgrade be applied and deployed. Add only a credential-free
+GitHub hosted verification workflow (`.github/workflows/node-runtime.yml`) to
+run the existing frozen install, Node smoke, lint, typecheck, unit, build and
+fixture E2E commands under the pinned Node version. This avoids the Mac disk
+blocker; it does not waive or weaken checks, change product behavior, use
+production data/secrets, or replace Netlify's existing deployment workflow.
+Official action revisions are pinned to immutable tag-resolved commits.
+After all checks pass on the exact PR head, merge through GitHub, let the
+existing main-branch Netlify build deploy, and re-attest production startup
+Node version, deployed source commit, health, and rollback identity.
